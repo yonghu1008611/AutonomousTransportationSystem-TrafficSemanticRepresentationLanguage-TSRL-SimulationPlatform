@@ -203,6 +203,8 @@ class Vehicle:
         logging.debug(
             f"Vehicle {self.id} is in lane {self.lane_id}, "
             f"In available_lanes? {current_lane.id in self.available_lanes}")
+        # 7.19：添加车辆位置信息日志
+        logging.info(f"Vehicle {self.id} position: x={self.current_state.x}, y={self.current_state.y}, lane_id={self.lane_id}")
 
         self.update_behavior_with_manual_input(manual_input, current_lane)
 

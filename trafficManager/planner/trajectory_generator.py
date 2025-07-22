@@ -259,9 +259,12 @@ def stop_trajectory_generator(vehicle: Vehicle,
                             - 2.0,
                         )
     # Step 2: 
+    # 第二步：根据最小距离和当前速度，判断是否需要紧急停车
     path = Trajectory()
     if (current_state.vel <= 1.0 and
-        (min_s - current_state.s) <= car_length):  # already stopped, keep it
+        (min_s - current_state.s) <= car_length):  
+        # already stopped, keep it
+        # 情况1：车辆已经停止
         logging.debug(f"Vehicle {vehicle.id} Already stopped")
         path = Trajectory()
         for t in np.arange(0, course_t, dt):
@@ -274,7 +277,9 @@ def stop_trajectory_generator(vehicle: Vehicle,
             cost.jerk(path, config["weights"]) * dt)
         return path
     if ((min_s - current_state.s) >
-            current_state.s_d * course_t / 1.5):  # no need to stop
+            current_state.s_d * course_t / 1.5):  
+            # no need to stop
+            # 情况2：车辆不需要停车
         logging.debug(f"Vehicle {vehicle.id} No need to stop")
         if (min_s - current_state.s) < 5.0 / 3.6 * course_t:
             target_s = min_s
@@ -302,7 +307,9 @@ def stop_trajectory_generator(vehicle: Vehicle,
             cost.jerk(path, config["weights"]) * dt)
         return path
     elif (min_s - current_state.s) < max(current_state.s_d**2 / (2 * max_acc),
-                                         car_length / 4):  # need emergency stop
+                                         car_length / 4):  
+                                         # need emergency stop
+                                         # 情况3：需要紧急停止
         logging.debug(f"Vehicle {vehicle.id} Emergency Brake")
         path = frenet_optimal_planner.calc_stop_path(current_state,
                                                      vehicle.max_decel,
@@ -317,6 +324,7 @@ def stop_trajectory_generator(vehicle: Vehicle,
         return path
 
     # normal stop
+    # 情况4：正常停止
     logging.debug(f"Vehicle {vehicle.id} Normal stopping")
     if (min_s - current_state.s) < car_length:
         sample_d = [current_state.d]

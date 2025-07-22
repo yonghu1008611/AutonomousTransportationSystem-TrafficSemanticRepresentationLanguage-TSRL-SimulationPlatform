@@ -4,10 +4,12 @@
 创建日期：2025-07-15
 """
 
+# 目标：7.17，写入每辆车的存储库，存储车辆的交流消息
 from __future__ import annotations
 import time
 from typing import Dict, List, Optional
-from logger.logger import Logger
+import logger
+from logger import Logger
 
 class Message:
     """消息类，封装车辆间通信内容"""
@@ -17,15 +19,38 @@ class Message:
         self.content = content
         self.timestamp = timestamp or time.time()
 
+# 定义消息列表
+class MessageList:
+    def __init__(self):
+        self.message_list: List[Message] = []
+    
+    # 定义方法：将消息添加到列表
+    def append_message(self, message: Message):
+        """将消息添加到列表"""
+        self.message_list.append(message)
+    
+    # 定义方法：打印消息列表
+    def print_message_list(self):
+        """打印消息列表"""
+        for msg in self.message_list:
+            print(f"{msg.sender_id} -> {msg.receiver_id}: {msg.content}\n")
+    
+    # 定义方法：将当前车辆的消息列表保存到当前文件夹的文本文档中
+    def save_message_list(self, vehicle_id: str):
+        """将消息列表保存到当前文件夹的文本文档中"""
+        with open(f"message_{vehicle_id}_history.txt", "w") as file:
+            for msg in self.message_list:
+                file.write(f"{msg.sender_id} -> {msg.receiver_id}: {msg.content}\n")
+
 class CommunicationManager:
     """通信管理器，负责消息路由和分发"""
     def __init__(self):
         self.subscribers: Dict[str, VehicleCommunicator] = {} # 订阅者列表
-        self.logger = Logger.get_instance() # 日志记录器
+        self.logger = logger.get_logger(__name__)# 日志记录器
         self.message_history: List[Message] = [] # 消息历史记录列表
 
     def register_vehicle(self, vehicle: VehicleCommunicator):
-        """注册车辆通信器"""
+        """将车辆注册在通信管理器"""
         self.subscribers[vehicle.vehicle_id] = vehicle
 
     def send_message(self, message: Message):
@@ -45,21 +70,24 @@ class CommunicationManager:
                     vehicle.receive_message(message)
 
 class VehicleCommunicator:
-    """车辆通信器基类"""
+    """车辆通信器基类，作为HV和RV通信器的父类"""
     def __init__(self, vehicle_id: str, communication_manager: CommunicationManager):
         self.vehicle_id = vehicle_id
         self.communication_manager = communication_manager
         self.is_self_vehicle = False  # 是否为自车
-        self.logger = Logger.get_instance()
-        
+        self.logger = logger.get_logger(__name__)
+        # 初始化存储信息的列表
+        self.message_history: MessageList = MessageList()
         # 注册到通信管理器
         communication_manager.register_vehicle(self)
-
-    def send主动消息(self, content: str, target_id: str = None):
+    
+    # 定义方法：主动发送消息
+    def send(self, content: str, target_id: str = None):
         """主动发送消息"""
+        # 文本前缀，取决于是自车还是他车
         prefix = "Send by HV:" if self.is_self_vehicle else "Send by RV:"
+        # 完整文本
         full_content = f"{prefix}{content}"
-        
         # 发送消息
         message = Message(
             sender_id=self.vehicle_id,
@@ -67,7 +95,10 @@ class VehicleCommunicator:
             content=full_content
         )
         self.communication_manager.send_message(message)
-        
+        # 存储消息到本地列表
+        self.message_history.append_message(message)
+        # 将本地列表在当前文件夹中的文本文件中打印出来
+        self.message_history.save_message_list(self.vehicle_id)
         # 在终端输出
         print(full_content)
 
@@ -75,7 +106,6 @@ class VehicleCommunicator:
         """接收消息并处理"""
         if message.sender_id == self.vehicle_id:
             return  # 忽略自己发送的消息
-
         # 生成回复内容
         if self.is_self_vehicle:
             reply_prefix = "Received by HV:"
@@ -118,9 +148,12 @@ class RvCommunicator(VehicleCommunicator):
         super().__init__(vehicle_id, communication_manager)
         self.is_self_vehicle = False
 
+    # 7.17：希望以后能写成一种通用方法，什么消息都能发送
     def send_emergency_stop_message(self):
         """发送紧急停车消息"""
-        self.send主动消息(f"EmergencyStation({self.vehicle_id})")
+        self.send(f"EmergencyStation({self.vehicle_id})")
+        # 在终端上输出发送信息
+        print(f"RV {self.vehicle_id} sent: EmergencyStation({self.vehicle_id})")
 
 # 全局通信管理器实例
 _global_communication_manager = None

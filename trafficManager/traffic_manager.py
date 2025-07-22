@@ -117,6 +117,8 @@ class TrafficManager:
         through_timestep = current_time_step - self.time_step
 
         # Perception module
+        # 感知模块：感知周围环境
+        # 提取当前场景中的车辆信息
         vehicles = self.extract_vehicles(vehicles_info, roadgraph, T,
                                          through_timestep, self.sumo_model.sim_mode)
         history_tracks = self.extract_history_tracks(current_time_step,

@@ -15,6 +15,7 @@ from rich import print
 from traci import TraCIException
 from typing import Dict
 
+from read_stop_info import validate_and_apply_stops
 from simModel.common.carFactory import Vehicle, egoCar
 from simModel.common.gui import GUI
 from simModel.egoTracking.movingScene import MovingScene
@@ -23,7 +24,7 @@ from utils.trajectory import State, Trajectory
 from utils.simBase import MapCoordTF, vehType
 
 from evaluation.evaluation import RealTimeEvaluation
-
+import read_stop_info # 7.20 添加停车解析内容
 
 class Model:
     '''
@@ -79,6 +80,11 @@ class Model:
         else:
             self.dataBase = datetime.strftime(
                 datetime.now(), '%Y-%m-%d_%H-%M-%S') + '_egoTracking' + '.db'
+        
+        # 7.20：添加模型车辆列表
+        self.vehicles: List[Vehicle] = []
+        # 7.20 添加停车解析内容
+        self.vehicles_with_stops = read_stop_info.extract_stop_info(self.rouFile)        
 
         self.createDatabase()
         self.simDescriptionCommit(simNote)
@@ -103,6 +109,15 @@ class Model:
 
         self.evaluation = RealTimeEvaluation(dt=0.1)
 
+    # 7.20 定义新方法，获得车辆列表
+    def getVehicleList(self):
+        # 7.20：获取所有车辆ID，实例化车辆列表
+        vehicles_ids = traci.vehicle.getIDList()
+        vehicles = []
+        for vehicle_id in vehicles_ids:
+            vehicle = Vehicle(vehicle_id)
+            vehicles.append(vehicle)
+        return vehicles
     # 创建数据库
     def createDatabase(self):
         # if database exist then delete it
@@ -269,7 +284,7 @@ class Model:
         self.createTimer()
 
     # DEFAULT_VEHTYPE
-    # 获取所有车辆类型ID
+    # 获取所有车辆类型
     def getAllvTypeID(self) -> list:
         allvTypesID = []
         if ',' in self.rouFile:
@@ -296,6 +311,8 @@ class Model:
             num_clients = "2" # 设置客户端数量为2
         else:
             num_clients = "1" # 设置客户端数量为1
+        print("SUMO starting...\n正在启动sumo仿真...")
+
         traci.start([
             'sumo' if not self.SUMOGUI else 'sumo-gui', # 启动SUMO或SUMO-GUI
             '-n', self.netFile, # 加载网络文件
@@ -313,6 +330,7 @@ class Model:
             num_clients,
         ], port = 8813)
         traci.setOrder(1)
+        print("route info analysing...\n正在解析rou.xml文件...")
 
         allvTypeID = self.getAllvTypeID() # 获取所有车辆类型ID
         allvTypes = {}
@@ -338,6 +356,8 @@ class Model:
             allvTypes[vtid] = vtins
             self.allvTypes = allvTypes
         self.allvTypes = allvTypes
+
+        # 7.17，display初始化：初始化所有车辆的展示文本数据库
 
     # 绘制车辆状态
     def plotVState(self):
@@ -541,7 +561,7 @@ class Model:
             centerx, centery, yaw, speed, accel, stop_flag = veh.plannedTrajectory.pop_last_state(
             ) 
             try:
-                veh.controlSelf(centerx, centery, yaw, speed, accel,stop_flag) # 控制车辆移动 6.16:添加stop_flag
+                veh.controlSelf(centerx, centery, yaw, speed, accel, stop_flag) # 控制车辆移动 6.16:添加stop_flag
             except:
                 return
         else:
@@ -670,7 +690,17 @@ class Model:
     def moveStep(self):
         if self.gui.is_running and self.timeStep < self.max_steps:
             traci.simulationStep() 
+            # 7.15：[target]display函数的更新迭代：展示AOI内所有车辆此时刻的信息发出和接受信息
             self.timeStep += 1
+            # 7.20：获取所有车辆ID，实例化车辆列表
+            # 只在必要时更新车辆列表
+            if not self.vehicles or self.timeStep % 10 == 0:
+                self.vehicles=self.getVehicleList()
+            if self.vehicles:
+                # 7.20 分配停车信息
+                read_stop_info.assign_stops_to_vehicles(self.vehicles_with_stops,self.vehicles)
+                # 7.21 验证并应用停车信息
+                read_stop_info.validate_and_apply_stops(self.vehicles)
         elif self.timeStep >= self.max_steps: # 如果模拟步长达到最大步长
             self.tpEnd = 1 # 设置模拟结束标志
         if not dpg.is_dearpygui_running(): # 如果dearpygui未运行

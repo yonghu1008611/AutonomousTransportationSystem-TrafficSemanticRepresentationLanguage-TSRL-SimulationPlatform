@@ -7,8 +7,8 @@ import time
 import os
 
 # 配置文件路径
-NET_FILE = r'D:\学习资料\董组\时空推理\LimSim\LimSim\networkFiles\ForwardCollisionWarning\ForwardCollisionWarning.net.xml'
-ROU_FILE = r'D:\学习资料\董组\时空推理\LimSim\LimSim\networkFiles\ForwardCollisionWarning\ForwardCollisionWarning.rou.xml'
+NET_FILE = r'E:\学习资料\董组\时空推理\LimSim\LimSim\networkFiles\ForwardCollisionWarning\ForwardCollisionWarning.net.xml'
+ROU_FILE = r'E:\学习资料\董组\时空推理\LimSim\LimSim\networkFiles\ForwardCollisionWarning\ForwardCollisionWarning.rou.xml'
 
 # SUMO启动配置
 sumo_binary = r'D:\sumo-win64-1.15.0\sumo-1.15.0\bin\sumo-gui.exe'
@@ -19,7 +19,7 @@ if __name__ == '__main__':
             sumo_binary,
             '-n', NET_FILE,
             '-r', ROU_FILE,
-            '--step-length', '0.1',
+            '--step-length', '0.5',
             '--collision.action', 'remove',
             '--quit-on-end'
         ])
@@ -35,7 +35,7 @@ if __name__ == '__main__':
             #     lane_id = traci.vehicle.getLaneID('1')
             #     if lane_id.startswith('E2') and not stop_triggered:
             #         traci.vehicle.setStop(
-            #             vehID='1',
+            #             vehID='',
             #             edgeID=lane_id.split('_')[0],
             #             pos=30.0,
             #             laneIndex=int(lane_id.split('_')[1]),

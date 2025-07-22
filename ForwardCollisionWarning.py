@@ -15,8 +15,8 @@ log = logger.setup_app_level_logger(file_name="app_debug.log")
 
 file_paths = {
     "ForwardCollisionWarning": (
-        "networkFiles/ForwardCollisionWarning/ForwardCollisionWarning.net.xml",
-        "networkFiles/ForwardCollisionWarning/ForwardCollisionWarning.rou.xml"
+        "e:/学习资料/董组/时空推理/LimSim/LimSim/networkFiles/ForwardCollisionWarning/ForwardCollisionWarning.net.xml",
+        "e:/学习资料/董组/时空推理/LimSim/LimSim/networkFiles/ForwardCollisionWarning/ForwardCollisionWarning.rou.xml"
     ),
 }
 
@@ -47,6 +47,10 @@ def run_model(
         # 主循环
         # 当自车未到达终点时，继续模拟
         while not model.tpEnd:
+            # 修改这行代码
+            stopping_car= next((v for v in model.vehicles if v.id == "0"), None)
+            if stopping_car:
+                print(stopping_car.stop_info)
             try:
                 model.moveStep()
                 if model.timeStep % 5 == 0:
@@ -85,7 +89,7 @@ if __name__ == "__main__":
                 rou_file,
                 ego_veh_id="1",
                 carla_cosim=False,
-                SUMOGUI=True
+                # SUMOGUI=True
                 )
     except Exception as e:
         log.error(f"Main program error: {str(e)}")
