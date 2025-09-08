@@ -17,6 +17,7 @@ from traci import vehicle
 from typing import Dict
 from utils.roadgraph import RoadGraph
 
+from read_stop_info import validate_and_apply_stops
 from simModel.common.carFactory import Vehicle, egoCar
 from simModel.common.gui import GUI
 from simModel.egoTracking.movingScene import MovingScene
@@ -131,7 +132,6 @@ class Model:
             vehicle = Vehicle(vehicle_id)
             vehicles.append(vehicle)
         return vehicles
-
     # 创建数据库
     def createDatabase(self):
         # if database exist then delete it
@@ -387,6 +387,8 @@ class Model:
                 print("车辆ID：", v.id, "停车信息：", v.stop_info)
             else:
                 print("车辆ID：", v.id, "停车信息：无")
+        # 7.17，display初始化：初始化所有车辆的展示文本数据库
+
         # 7.17，display初始化：初始化所有车辆的展示文本数据库
 
     # 绘制车辆状态
@@ -738,7 +740,17 @@ class Model:
     def moveStep(self):
         if self.gui.is_running and self.timeStep < self.max_steps:
             traci.simulationStep() 
+            # 7.15：[target]display函数的更新迭代：展示AOI内所有车辆此时刻的信息发出和接受信息
             self.timeStep += 1
+            # 7.20：获取所有车辆ID，实例化车辆列表
+            # 只在必要时更新车辆列表
+            if not self.vehicles or self.timeStep % 10 == 0:
+                self.vehicles=self.getVehicleList()
+            if self.vehicles:
+                # 7.20 分配停车信息
+                read_stop_info.assign_stops_to_vehicles(self.vehicles_with_stops,self.vehicles)
+                # 7.21 验证并应用停车信息
+                read_stop_info.validate_and_apply_stops(self.vehicles)
         elif self.timeStep >= self.max_steps: # 如果模拟步长达到最大步长
             self.tpEnd = 1 # 设置模拟结束标志
         if not dpg.is_dearpygui_running(): # 如果dearpygui未运行

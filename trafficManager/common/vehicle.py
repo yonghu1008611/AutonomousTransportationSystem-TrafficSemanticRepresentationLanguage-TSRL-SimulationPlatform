@@ -1,6 +1,7 @@
 """
 This module contains the Vehicle class and related functions for managing vehicles in a traffic simulation.
 翻译：
+<<<<<<< HEAD
 这个模块包含Vehicle类和相关函数，用于智能管理交通模拟中的车辆
 注意和simModel.carFactory.Vehicle的区别
 control_Vehicle类：
@@ -10,6 +11,9 @@ control_Vehicle类：
     - Frenet坐标系 ：支持Frenet坐标系下的车辆状态表示
     - 通信功能 ：集成车辆间通信能力（V2V）
 
+=======
+这个模块包含Vehicle类和相关函数，用于管理交通模拟中的车辆。
+>>>>>>> bbb971f28e433052bc1b806df5c1787bbc26e350
 Classes:
     Behaviour (IntEnum): Enum class for vehicle behavior.
     Vehicle: Represents a vehicle in the simulation.
@@ -21,7 +25,6 @@ Functions:
         Creates a Vehicle instance based on the last seen vehicle information.
     extract_vehicles(vehicles_info: dict, roadgraph: RoadGraph, lastseen_vehicles: dict, T: float, through_timestep: int, sumo_model) -> Tuple[Vehicle, Dict[int, Vehicle], Dict[int, Vehicle]]:
         Extracts vehicles from the provided information and returns them as separate dictionaries.
-
 """
 from copy import copy, deepcopy
 from enum import IntEnum, Enum
@@ -224,7 +227,6 @@ class control_Vehicle():
                 f"Key command Vehicle {self.id} to change Right lane")
 
     def update_behaviour(self, roadgraph: RoadGraph, manual_input: str = None) -> None:
-
         """Update the behaviour of a vehicle.
 
         Args:
@@ -241,7 +243,6 @@ class control_Vehicle():
         # 8.4 如果车辆在stop_lane上且未到达停车位置
         if self.lane_id == self.stop_lane and self.current_state.s < self.stop_pos:
             self.behaviour = Behaviour.STOP
-
         # Lane change behavior··
         # 车辆变道
         if isinstance(current_lane, NormalLane): # 如果当前车辆在普通车道上

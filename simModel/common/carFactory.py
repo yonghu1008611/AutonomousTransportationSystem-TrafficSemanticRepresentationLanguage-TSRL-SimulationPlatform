@@ -57,6 +57,7 @@ class Vehicle:# 定义车辆类别
         self.plannedTrajectory: Trajectory = None # 存储车辆计划轨迹
         self.dbTrajectory: Trajectory = None # 存储车辆数据库轨迹
         self.stop_info = []  # 7.20：添加单车停车信息存储列表
+        self.init_communication() # 初始化通信器
 
     # LLR: lane-level route
     # 获取车道级别路径
@@ -240,6 +241,29 @@ class Vehicle:# 定义车辆类别
                 output = output | self.LLRDict[self.edgeID]['junctionLanes']
                 return output
     
+    # 7.20：设置车辆的停车信息
+    def set_stop_info(self, stops):
+        """设置车辆的停车信息"""
+        self.stop_info = stops
+    
+    # 7.20：应用车辆的停车信息
+    def apply_stop_info(self):
+        """应用车辆的停车信息"""
+        for stop in self.stop_info:
+            lane_parts = stop['lane'].split('_')
+            edge_id = lane_parts[0]
+            lane_index = int(lane_parts[1]) if len(lane_parts) > 1 else 0
+            try:
+                traci.vehicle.setStop(
+                    vehID=self.id,
+                    edgeID=edge_id,
+                    pos=stop['end_pos'],
+                    laneIndex=lane_index,
+                    until=stop['until']
+                )
+                print(f"手动应用停车信息：车辆{self.id}, 目标停车道路{edge_id}, 停车位置{stop['end_pos']}, 目标车道{lane_index}, 目标时间{stop['until']}")
+            except Exception as e:
+                print(f"应用停车信息失败：{str(e)}")
     # entry control mode and control vehicles
     # used for real-time simulation mode.
     # 进入控制模式并控制车辆
@@ -494,29 +518,28 @@ class Vehicle:# 定义车辆类别
             self.yaw, self.speed, self.accel, self.vTypeID
         )
     
-    # # 通信层
-    # # 25.8.16 新增方法，初始化车辆通信器
-    # def init_communication(self, communication_manager: CommunicationManager, if_egoCar: bool = False):
-    #     """初始化车辆通信器"""
-    #     self.if_egoCar=if_egoCar
-    #     self.communication_manager = communication_manager
-    #     # 根据车辆ID类型初始化对应通信器
-    #     self.communicator = VehicleCommunicator(self.id, self.communication_manager,self.if_egoCar) # 初始化RV通信器
-    #     self.communicator.vehicle = self
+    # 通信层
+    def init_communication(self):
+        """初始化车辆通信器"""
+        comm_manager = get_communication_manager()
+        # 根据车辆ID类型初始化对应通信器
+        # self.communicator = HvCommunicator(self.id, comm_manager)
+        self.communicator = RvCommunicator(self.id, comm_manager) # 初始化RV通信器
+        self.communicator.vehicle = self
         
-    def set_stop_info(self, stops):
-        """设置车辆停车信息"""
-        self.stop_info = stops
-        
-    # def apply_stop_info(self):
-    #     """应用停车信息"""
-    #     if self.stop_info:
-    #         # 这里可以实现根据停车信息执行停车的逻辑
-    #         for stop in self.stop_info:
-    #             # 示例：如果当前位置接近停车位置，则执行停车
-    #             if hasattr(self, 'lanePos') and abs(self.lanePos - stop['end_pos']) < 5.0:
-    #                 self.emergency_stop()
-    #                 break
+    """
+    现在需要考虑的是，如何在车辆真正停止时，触发此通信状况
+    """
+    def emergency_stop(self):
+        """执行紧急停车并发送消息"""
+        # 执行物理停车
+        traci.vehicle.setStop(self.id, self.laneID, self.lanePos)
+        # 发送紧急停车消息
+        if hasattr(self, 'communicator'):
+            self.communicator.send_emergency_stop_message()
+        # 更新停止状态
+        self.stop_flag = True
+
 
 # 定义Ego Car类
 class egoCar(Vehicle):
@@ -531,7 +554,15 @@ class egoCar(Vehicle):
         self.deArea = deArea  # 检测区域半径
         self.sceMargin = sceMargin  # 场景边缘距离
         self.id = id # 确保id属性正确赋值
-
+        
+    def init_communication(self):
+        """初始化车辆通信器"""
+        comm_manager = get_communication_manager()
+        # 根据车辆ID类型初始化对应通信器
+        self.communicator = HvCommunicator(self.id, comm_manager) # 这里和Vehicle不一样
+        # self.communicator = RvCommunicator(self.id, comm_manager)
+        self.communicator.vehicle = self
+    
     # 在GUI中绘制自车的检测区域（黄色半透明圆形）
     def plotdeArea(self, node: dpg.node, ex: float, ey: float, ctf: CoordTF):
         cx, cy = ctf.dpgCoord(self.x, self.y, ex, ey)
