@@ -117,21 +117,39 @@ class Model:
 
         self.evaluation = RealTimeEvaluation(dt=0.1)
 
-    # 7.20 定义新方法，获得非Ego车辆列表
+     # 7.20 定义新方法，获得非Ego车辆列表
     def getVehicleList(self):
         # 8.17：获取roufile中的所有车辆ID，实例化车辆列表
         vehicles_ids = []
-        elementTree = ET.parse(self.rouFile)
-        root = elementTree.getroot()
-        for child in root:
-            if child.tag == 'vehicle' and child.attrib['id'] != self.ego.id:
-                vehicle_id = child.attrib['id']
-                vehicles_ids.append(vehicle_id)
+        processed_ids = set()  # 避免重复添加车辆ID
+        # 处理逗号分隔的多个文件路径
+        rou_files = self.rouFile.split(',')
+        for rou_file in rou_files:
+            rou_file = rou_file.strip()  # 去除可能的空格
+            if not os.path.exists(rou_file):
+                logging.warning(f"路由文件不存在: {rou_file}")
+                continue
+                
+            try:
+                elementTree = ET.parse(rou_file)
+                root = elementTree.getroot()
+                for child in root:
+                    if child.tag == 'vehicle' and child.attrib['id'] != self.ego.id:
+                        vehicle_id = child.attrib['id']
+                        # 避免重复添加车辆ID
+                        if vehicle_id not in processed_ids:
+                            vehicles_ids.append(vehicle_id)
+                            processed_ids.add(vehicle_id)
+            except ET.ParseError as e:
+                logging.error(f"解析路由文件失败 {rou_file}: {str(e)}")
+                continue
+                
         vehicles = []
         for vehicle_id in vehicles_ids:
             vehicle = Vehicle(vehicle_id)
             vehicles.append(vehicle)
         return vehicles
+
     # 创建数据库
     def createDatabase(self):
         # if database exist then delete it

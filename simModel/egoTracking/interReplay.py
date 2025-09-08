@@ -1,7 +1,3 @@
-"""
-    场景回放模型
-    用于回放场景
-"""
 from __future__ import annotations
 import dearpygui.dearpygui as dpg
 import sqlite3
@@ -28,26 +24,24 @@ class InterReplayModel:
     def __init__(self,
                  dataBase: str,
                  dataBase2: str = None,
-                 startFrame: int = None, # 交互式重放开始时间步
+                 startFrame: int = None,
                  simNote: str = ''
                  ) -> None:
         print('[green bold]Model initialized at {}.[/green bold]'.format(
             datetime.now().strftime('%H:%M:%S.%f')[:-3]
         ))
-        self.sim_mode: str = 'InterReplay' # 交互式重放模式-控制字符
-        self.dataBase = dataBase # 场景数据库
-        conn = sqlite3.connect(self.dataBase) # 连接场景数据库
-        cur = conn.cursor() # 数据库游标
+        self.sim_mode: str = 'InterReplay'
+        self.dataBase = dataBase
+        conn = sqlite3.connect(self.dataBase) # 与数据库相连接
+        cur = conn.cursor()
 
         # minTimeStep
-        cur.execute("""SELECT MAX(frame) FROM frameINFO;""") # 从frameInfo中提取最大时间步
-        result = cur.fetchone() # 提取最大时间步
-        maxTimeStep = result[0] - 200 if result and result[0] is not None else 0
+        cur.execute("""SELECT MAX(frame) FROM frameINFO;""")
+        maxTimeStep = cur.fetchone()[0] - 200
         if maxTimeStep < 0:
             maxTimeStep = 0
-        cur.execute("""SELECT MIN(frame) FROM frameINFO;""") # 从frameInfo中提取最小时间步
-        result = cur.fetchone() # 提取最小时间步
-        minTimeStep = result[0] if result and result[0] is not None else 0 # 最小时间步
+        cur.execute("""SELECT MIN(frame) FROM frameINFO;""")
+        minTimeStep = cur.fetchone()[0]
         if startFrame:
             if startFrame > maxTimeStep:
                 print(
@@ -72,29 +66,18 @@ class InterReplayModel:
         self.rb.getData()
         self.rb.buildTopology()
 
-        cur.execute("""SELECT * FROM simINFO;""") # 从simInfo中提取场景信息
+        cur.execute("""SELECT * FROM simINFO;""")
         simINFO = cur.fetchone()
         _, localPosx, localPosy, radius, egoID, strBoundary, _, _ = simINFO
         if egoID:
             self.egoID = egoID
             self.ego = self.initVeh(egoID, self.timeStep)
             netBoundaryList = strBoundary.split(' ')
-            # 过滤掉空字符串
-            netBoundaryList = [p for p in netBoundaryList if p]
             self.netBoundary: list[list[float]] = [
                 list(map(float, p.split(','))) for p in netBoundaryList
             ]
         else:
             raise TypeError('Please select the appropriate database file.')
-
-        # 初始化self.sr
-        self.sr = SceneReplay(self.rb, None)  # 先传入None，稍后再设置ego
-
-        # 现在可以安全地初始化self.ego了
-        if egoID:
-            self.ego = self.initVeh(egoID, self.timeStep)
-            # 更新SceneReplay中的ego引用
-            self.sr.ego = self.ego
 
         cur.close()
         conn.close()
@@ -110,6 +93,8 @@ class InterReplayModel:
         self.databaseMigration()
         self.dataQue = Queue()
         self.createTimer()
+
+        self.sr = SceneReplay(self.rb, self.ego)
 
         self.evaluation = RealTimeEvaluation(dt=0.1)
 
@@ -267,7 +252,6 @@ class InterReplayModel:
         cur.close()
         conn.close()
 
-    # 从数据库中提取车辆历史轨迹
     def dbTrajectory(self, vehid: str, currFrame: int) -> dict:
         conn = sqlite3.connect(self.dataBase)
         cur = conn.cursor()
@@ -282,11 +266,10 @@ class InterReplayModel:
             # if the trajectory is segmented in time, only the data of the first
             # segment will be taken.
             validSeq = [frameData[0]]
-            for i in range(1, len(frameData)):
-                if frameData[i][0] - frameData[i-1][0] == 1:
-                    validSeq.append(frameData[i])
-                else:
-                    break
+            for i in range(len(frameData)-1):
+                if frameData[i+1][0] - frameData[i][0] == 1:
+                    validSeq.append(frameData[i+1])
+
             tState = []
             for vs in validSeq:
                 state = State(
@@ -296,8 +279,7 @@ class InterReplayModel:
                 tState.append(state)
             dbTrajectory = Trajectory(states=tState)
         else:
-            # 在这里检查self.sr是否已初始化
-            if self.sr and vehid not in self.sr.vehINAoI.keys():
+            if vehid not in self.sr.vehINAoI.keys():
                 self.sr.outOfRange.add(vehid)
             return
 
@@ -437,7 +419,7 @@ class InterReplayModel:
                     afy = list(self.ego.dbTrajectory.accQueue)
                     afx = list(range(1, len(afy)+1))
                     dpg.set_value('a_series_tag_future', [afx, afy])
-    # 绘制
+
     def drawSce(self):
         node = dpg.add_draw_node(parent="Canvas")
         ex, ey = self.ego.x, self.ego.y
@@ -478,7 +460,7 @@ class InterReplayModel:
                         fill=(37, 204, 247, 200),
                         parent=mvNode)
 
-        infoNode = dpg.add_draw_node(parent='simInfo') # 为simInfo添加子节点infoNode
+        infoNode = dpg.add_draw_node(parent='simInfo')
         dpg.draw_text((5, 5),
                       f'Replay {self.dataBase}',
                       color=(75, 207, 250),
@@ -496,12 +478,6 @@ class InterReplayModel:
                       parent=infoNode)
         dpg.draw_text((5, 65),
                       'Lane position: %.5f' % self.ego.lanePos,
-                      color=(249, 202, 36),
-                      size=20,
-                      parent=infoNode)
-        # 尝试添加互操作语言文本
-        dpg.draw_text((5, 85),
-                      'test_text',
                       color=(249, 202, 36),
                       size=20,
                       parent=infoNode)

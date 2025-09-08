@@ -64,10 +64,6 @@ def run_model(
         # 主循环
         # 当自车未到达终点时，继续模拟
         while not model.tpEnd:
-            # 修改这行代码
-            stopping_car= next((v for v in model.vehicles if v.id == "0"), None)
-            if stopping_car:
-                print(stopping_car.stop_info)
             try:
                 model.moveStep()
                 if model.timeStep % 5 == 0:

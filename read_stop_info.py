@@ -93,8 +93,7 @@ def validate_and_apply_stops(vehicles):
                     print(f"手动应用车辆 {vehicle.id} 的停车信息")
                     vehicle.apply_stop_info()
                 else:
-                    # 验证停车信息
-                    print(f"车辆 {vehicle.id} 的停车信息已应用")
+                    continue
 
     except Exception as e:
         print(f"仿真错误: {str(e)}")

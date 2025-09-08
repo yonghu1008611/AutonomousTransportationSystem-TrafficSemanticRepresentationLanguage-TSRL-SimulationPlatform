@@ -1,3 +1,9 @@
+"""
+分析LimSim仿真数据库文件
+使用方法：
+(powershell)python analyze_db.py <数据库路径>
+例如：(powershell)python analyze_db.py egoTrackingTest.db
+"""
 import sqlite3
 import sys
 import argparse  # 添加参数解析库
