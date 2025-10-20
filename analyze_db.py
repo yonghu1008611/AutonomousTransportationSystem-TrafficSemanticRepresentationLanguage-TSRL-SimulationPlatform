@@ -1,5 +1,5 @@
 """
-分析LimSim仿真数据库文件
+分析ATSISP仿真数据库文件
 使用方法：
 (powershell)python analyze_db.py <数据库路径>
 例如：(powershell)python analyze_db.py egoTrackingTest.db
@@ -57,7 +57,7 @@ def analyze_database(db_path):
         sys.exit(1)
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='分析LimSim仿真数据库文件')
+    parser = argparse.ArgumentParser(description='分析ATSISP仿真数据库文件')
     parser.add_argument('db_path', help='SQLite数据库文件路径')
     args = parser.parse_args()
     analyze_database(args.db_path)

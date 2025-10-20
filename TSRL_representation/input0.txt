@@ -1,0 +1,22 @@
+// 这是输入测试文本，家族关系推理，推理得到的置换为{'x':'Di'}
+male(Jianbo);
+male(Di);
+female(Xin);
+female(Yuan);
+female(Yuqing);
+father(Jianbo,Di);
+father(Di,Yuqing);
+mother(Xin,Di);
+mother(Yuan,Yuqing);
+//daughter(Yuqing,YI);
+grandfather(x,y):-father(x,z),father(z,y);
+grandmother(x,y):-mother(x,z),father(z,y);
+daughter(y,x):-father(x,y),female(y);
+
+PRINT daughter(Yuqing,x);
+PRINT -1+6*90-98/8;
+PRINT x>5+9;
+PRINT "1"+"2"+"2";
+ASK daughter(Yuqing,x);
+//?- grandfather(x,Yuqing);
+

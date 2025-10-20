@@ -13,6 +13,7 @@ import numpy as np
 
 from common.vehicle import control_Vehicle
 from common import cost
+from TSRL_interaction.vehicle_communication import Performative
 
 from utils.roadgraph import AbstractLane, JunctionLane, RoadGraph,NormalLane
 from utils.obstacles import ObsType, Obstacle
@@ -52,76 +53,121 @@ def lanechange_trajectory_generator(
     config,
     T,
 ) -> Trajectory:
-    state_in_target_lane = vehicle.get_state_in_lane(target_lane)
-    target_vel = vehicle.target_speed
-    dt = config["DT"]
-    d_t_sample = config["D_T_S"] / 3.6
-    n_s_d_sample = config["N_D_S_SAMPLE"]
-    s_sample = config["S_SAMPLE"]
-    n_s_sample = config["N_S_SAMPLE"]
+    """
+    生成车辆车道变换的轨迹路径
+    
+    参数:
+    - vehicle: 需要变道的车辆对象
+    - target_lane: 目标车道
+    - obs_list: 障碍物列表
+    - config: 配置参数字典
+    - T: 时间参数
+    
+    返回:
+    - Trajectory: 最优轨迹路径
+    """
+    # 获取车辆在目标车道上的状态（位置、速度等信息）
+    state_in_target_lane = vehicle.get_state_in_lane(target_lane) # 获取目标车道上的状态
+    target_vel = vehicle.target_speed  # 获取车辆的目标速度
+    dt = config["DT"]  # 时间步长，用于轨迹离散化
+    d_t_sample = config["D_T_S"] / 3.6  # 速度采样间隔，转换为m/s
+    n_s_d_sample = config["N_D_S_SAMPLE"]  # 纵向速度采样数量
+    s_sample = config["S_SAMPLE"]  # 纵向位置采样间隔（米）
+    n_s_sample = config["N_S_SAMPLE"]  # 纵向位置采样数量
 
+    # 设置采样时间范围，使用配置中的最小时间除以1.5作为采样时间
     sample_t = [config["MIN_T"] / 1.5]  # Sample course time
+    
+    # 设置速度采样范围：在当前速度附近采样，限制不超过目标车道的限速
     sample_vel = np.linspace(
-        max(1e-9, state_in_target_lane.vel - d_t_sample * n_s_d_sample),
-        min(state_in_target_lane.vel + d_t_sample * n_s_d_sample,
-            target_lane.speed_limit), 5)
+        max(1e-9, state_in_target_lane.vel - d_t_sample * n_s_d_sample),  # 最小速度限制
+        min(state_in_target_lane.vel + d_t_sample * n_s_d_sample,  # 最大速度限制
+            target_lane.speed_limit), 5) # 采样速度，生成5个速度采样点
+    
+    # 计算当前速度和目标速度的较小值
     vel = min(state_in_target_lane.vel, target_vel)
+    
+    # 初始化纵向位置采样数组
     sample_s = np.empty(0)
+    
+    # 根据采样时间计算纵向位置采样范围
     for t in sample_t:
         sample_s = np.append(
             sample_s,
             np.arange(
-                state_in_target_lane.s + t * (max(5.0, vel)),
-                state_in_target_lane.s + t *
+                state_in_target_lane.s + t * (max(5.0, vel)),  # 起始位置：当前纵向位置 + 时间 * 最小速度
+                state_in_target_lane.s + t *  # 结束位置：当前纵向位置 + 时间 * (目标速度 + 采样范围)
                 (target_vel + s_sample * n_s_sample * 1.01),
-                s_sample,
+                s_sample,  # 采样间隔
             ),
         )
 
-    # Step 2: Calculate Paths
+    # Step 2: Calculate Paths (步骤2：计算轨迹路径)
+    # 初始化最优路径和成本
     best_path = None
     best_cost = math.inf
-    for t in sample_t:
-        for s in sample_s:
-            for s_d in sample_vel:
+    
+    # 遍历所有采样组合（时间、纵向位置、速度）来寻找最优路径
+    for t in sample_t:  # 遍历采样时间
+        for s in sample_s:  # 遍历纵向位置采样点
+            for s_d in sample_vel:  # 遍历速度采样点
+                # 定义目标状态（时间、纵向位置、横向位置为0、纵向速度）
                 target_state = State(t=t, s=s, d=0, s_d=s_d)
+                
+                # 使用Frenet最优规划器计算特定路径
                 path = frenet_optimal_planner.calc_spec_path(
                     state_in_target_lane, target_state, target_state.t, dt)
+                
+                # 如果路径为空，跳过
                 if not path.states:
                     continue
+                
+                # 将路径从Frenet坐标系转换为笛卡尔坐标系
                 path.frenet_to_cartesian(target_lane, vehicle.current_state)
+                
+                # 计算路径的综合成本（多维度评估）
                 path.cost = (
-                    cost.smoothness(path, target_lane.course_spline,
+                    cost.smoothness(path, target_lane.course_spline,  # 平滑度成本
                                     config["weights"]) * dt +
-                    cost.vel_diff(path, target_vel, config["weights"]) * dt +
-                    cost.guidance(path, config["weights"]) * dt +
-                    cost.acc(path, config["weights"]) * dt +
-                    cost.jerk(path, config["weights"]) * dt +
-                    cost.obs(vehicle, path, obs_list, config) +
-                    cost.changelane(config["weights"]))
+                    cost.vel_diff(path, target_vel, config["weights"]) * dt +  # 速度差异成本
+                    cost.guidance(path, config["weights"]) * dt +  # 引导成本
+                    cost.acc(path, config["weights"]) * dt +  # 加速度成本
+                    cost.jerk(path, config["weights"]) * dt +  # 加加速度成本
+                    cost.obs(vehicle, path, obs_list, config) +  # 障碍物避让成本
+                    cost.changelane(config["weights"]))  # 变道成本
+                
+                # 检查路径是否满足非完整约束（车辆运动学约束）
                 if not path.is_nonholonomic():
                     continue
+                
+                # 如果当前路径成本更低，更新最优路径
                 if path.cost < best_cost:
                     best_cost = path.cost
                     best_path = path
 
+    # 如果找到有效路径，返回最优路径
     if best_path is not None:
         logging.debug(f"Vehicle {vehicle.id} found a lane change path with cost: {best_cost}")
         return best_path
 
-    # return stop path
+    # 如果未找到有效变道路径，生成停车路径作为备选方案
     logging.info(f"vehicle {vehicle.id} found no lane change paths, calculating a stop path instead.")
 
+    # 计算紧急停车路径
     stop_path = frenet_optimal_planner.calc_stop_path(state_in_target_lane,
-                                                      vehicle.max_decel,
+                                                      vehicle.max_decel,  # 最大减速度
                                                       sample_t[0], dt, config)
+    
+    # 将停车路径从Frenet坐标系转换为笛卡尔坐标系
     stop_path.frenet_to_cartesian(target_lane, state_in_target_lane)
-    stop_path.cost = (cost.smoothness(stop_path, target_lane.course_spline,
+    
+    # 计算停车路径的成本
+    stop_path.cost = (cost.smoothness(stop_path, target_lane.course_spline,  # 平滑度成本
                                       config["weights"]) * dt +
-                      cost.guidance(stop_path, config["weights"]) * dt +
-                      cost.acc(stop_path, config["weights"]) * dt +
-                      cost.jerk(stop_path, config["weights"]) * dt +
-                      cost.stop(config["weights"]))
+                      cost.guidance(stop_path, config["weights"]) * dt +  # 引导成本
+                      cost.acc(stop_path, config["weights"]) * dt +  # 加速度成本
+                      cost.jerk(stop_path, config["weights"]) * dt +  # 加加速度成本
+                      cost.stop(config["weights"]))  # 停车成本
     return stop_path
 
 # 停止轨迹生成器
@@ -328,11 +374,11 @@ def stop_trajectory_generator(vehicle: control_Vehicle,
         """
         if redLight:
             # 8.18 车辆写入互操作语言：红灯停止
-            vehicle.communicator.send(f"Redlight({vehicle.id})")
+            vehicle.communicator.send(f"Redlight({vehicle.id});",performative=Performative.Inform)
         else:
             # 8.16 车辆写入互操作语言：紧急停止
             logging.debug(f"Vehicle {vehicle.id} Emergency Brake")
-            vehicle.communicator.send(f"EmergencyStation({vehicle.id});")
+            vehicle.communicator.send(f"EmergencyStation({vehicle.id});",performative=Performative.Inform)
         # 8.4 进入查看
         path = frenet_optimal_planner.calc_stop_path(current_state,
                                                      vehicle.max_decel,

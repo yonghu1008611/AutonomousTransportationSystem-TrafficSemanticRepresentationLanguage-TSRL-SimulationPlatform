@@ -1,6 +1,6 @@
 import traci
 from traci import TraCIException
-from math import sqrt
+from math import sqrt, pow
 from queue import Queue
 import dearpygui.dearpygui as dpg
 import sqlite3
@@ -21,6 +21,7 @@ class MovingScene:
         self.edges: set = None
         self.junctions: set = None
         self.RSUs: dict[str, RSU] = {}
+        self.rsuInAoI: dict[str, RSU] = {}  # 9.12 AOI内的RSU集合
         self.currVehicles: dict[str, Vehicle] = {}
         self.vehINAoI: dict[str, Vehicle] = {}
         self.outOfAoI: dict[str, Vehicle] = {}
@@ -123,6 +124,13 @@ class MovingScene:
         vehInAoI = {} # 当前帧在aoi内的车辆集合
         outOfAoI = {} # 当前帧不在aoi内的车辆集合
         outOfRange = set() # 当前帧超出监控范围的车辆集合
+        
+        # 检测AOI内的RSU
+        rsuInAoI = {}  # 9.12 AOI内的RSU集合
+        for rsu_id, rsu in self.RSUs.items():
+            if rsu and rsu.isInAoI(self.ego.laneID,self.ego.lanePos,self.ego.deArea):
+                rsuInAoI[rsu_id] = rsu
+        
         for vk, vv in self.currVehicles.items(): #vk: 车辆id, vv: 车辆实例
             if vk == self.ego.id:
                 continue
@@ -167,11 +175,12 @@ class MovingScene:
 
         self.vehINAoI = vehInAoI
         self.outOfAoI = outOfAoI
+        self.rsuInAoI = rsuInAoI  # 更新AOI内的RSU集合
         # 7.27 同步停车信息
         if self.vehicles_with_stops:
             assign_stops_to_vehicles(self.vehicles_with_stops, self.currVehicles)
     
-    # 绘制LimSim场景
+    # 绘制ATPSIP场景
     def plotScene(self, node: dpg.node, ex: float, ey: float, ctf: CoordTF):
         if self.edges:
             # 绘制道路
@@ -185,8 +194,8 @@ class MovingScene:
         # 9.5 添加绘制RSU方法
         if self.RSUs:
             # 绘制RSU
-            for rsu in self.RSUs:
-                self.netInfo.plotRSU(rsu, node, ex, ey, ctf)
+            for rsu in self.RSUs.values():
+                self.netInfo.plotRSU(rsu.id, node, ex, ey, ctf)
 
     def exportScene(self):
         roadgraph = RoadGraph()
@@ -211,7 +220,15 @@ class MovingScene:
             'outOfAoI': [sv.export2Dict(self.netInfo) for sv in self.outOfAoI.values()] # AOI外的车
         }       
 
-        return roadgraph,vehicles           
+        # 9.12 添加RSU信息到导出数据中
+        if self.RSUs:
+            facilities = {
+                'rsuInAoI': [rsu.export2Dict(self.netInfo) for rsu in self.rsuInAoI.values()]  # AOI内的RSU
+            }
+        else:
+            facilities = {}
+
+        return roadgraph, vehicles, facilities
 
 
 class SceneReplay:
@@ -224,6 +241,8 @@ class SceneReplay:
         self.outOfRange = set()
         self.edges: set = None
         self.junctions: set = None
+        self.RSUs: dict[str, RSU] = {}  # 9.12 存储当前范围内的RSU
+        self.rsuInAoI: dict[str, RSU] = {}  # 9.12 AOI内的RSU集合
 
     def updateScene(self, dataBase: str, timeStep: int):
         ex, ey = self.ego.x, self.ego.y
@@ -257,6 +276,8 @@ class SceneReplay:
 
         self.edges = NowEdges
         self.junctions = NowJuncs
+        # 更新RSU信息
+        self.RSUs = {rsu_id: self.netInfo.getRSU(rsu_id) for rsu_id in NowRSUs}
 
         NowTLs = {}
         conn = sqlite3.connect(dataBase)
@@ -300,6 +321,18 @@ class SceneReplay:
         ex, ey = self.ego.x, self.ego.y
         vehInAoI = {}
         outOfAoI = {}
+        
+        # 9.12 检测AOI内的RSU
+        rsuInAoI = {}  # AOI内的RSU集合
+        # 9.12 用于跟踪新进入AOI的RSU
+        new_rsus_in_aoi = {}
+        for rsu_id, rsu in self.RSUs.items():
+            if rsu and rsu.isInAoI(ex, ey, self.ego.deArea):
+                rsuInAoI[rsu_id] = rsu
+                # 9.12 检查是否是新进入AOI的RSU
+                if rsu_id not in self.rsuInAoI:
+                    new_rsus_in_aoi[rsu_id] = rsu
+        
         for vk, vv in self.currVehicles.items():
             if vk == self.ego.id:
                 continue
@@ -328,6 +361,15 @@ class SceneReplay:
 
         self.vehINAoI = vehInAoI
         self.outOfAoI = outOfAoI
+        self.rsuInAoI = rsuInAoI  #9.12  更新AOI内的RSU集合
+        
+        # 如果有新进入AOI的RSU，触发通信
+        if new_rsus_in_aoi and hasattr(self.ego, 'communicator') and self.ego.communicator:
+            for rsu_id, rsu in new_rsus_in_aoi.items():
+                # RSU向Ego车辆发送消息
+                content = f"RSU {rsu_id} entered AoI"
+                self.ego.communicator.send(content, target_id=self.ego.id)
+        
         # 7.27 同步停车信息
         if hasattr(self, 'vehicles_with_stops'):
             assign_stops_to_vehicles(self.vehicles_with_stops, self.currVehicles)
@@ -354,7 +396,12 @@ class SceneReplay:
             'outOfAoI': [sv.export2Dict(self.netInfo) for sv in self.outOfAoI.values()]
         }
 
-        return roadgraph, vehicles
+        # 添加RSU信息到导出数据中，修复返回值名称以匹配ForwardCollisionWarning.py中的期望
+        facilities = {
+            'rsuInAoI': [rsu.export2Dict(self.netInfo) for rsu in self.rsuInAoI.values()]  # AOI内的RSU
+        }
+
+        return roadgraph, vehicles, facilities
 
     def plotScene(self, node: dpg.node, ex: float, ey: float, ctf: CoordTF):
         if self.edges:
@@ -364,3 +411,8 @@ class SceneReplay:
         if self.junctions:
             for jc in self.junctions:
                 self.netInfo.plotJunction(jc, node, ex, ey, ctf)
+                
+        # 9.12 绘制RSU
+        if self.RSUs:
+            for rsu in self.RSUs.values():
+                self.netInfo.plotRSU(rsu.id, node, ex, ey, ctf)

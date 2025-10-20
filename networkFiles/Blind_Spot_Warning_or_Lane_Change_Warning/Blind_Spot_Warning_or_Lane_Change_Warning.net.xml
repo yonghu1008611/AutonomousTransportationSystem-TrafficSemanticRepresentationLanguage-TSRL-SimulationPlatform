@@ -4,7 +4,7 @@
 <configuration xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/netconvertConfiguration.xsd">
 
     <output>
-        <output-file value="D:\学习资料\董组\时空推理\LimSim\LimSim\networkFiles\111\Blind_Spot_Warning_or_Lane_Change_Warning.net.xml"/>
+        <output-file value="E:\Analysis and Inference\Analysis and Inference\Autonomous Transportation Semantic Interaction Simulation Platform-2025.10\ATSISP\networkFiles\Blind_Spot_Warning_or_Lane_Change_Warning\Blind_Spot_Warning_or_Lane_Change_Warning.net.xml"/>
     </output>
 
     <processing>

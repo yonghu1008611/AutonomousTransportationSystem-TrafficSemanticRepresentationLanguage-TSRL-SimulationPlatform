@@ -67,7 +67,7 @@ class ReplayModel:
         conn.close()
 
         self.lsr = LocalSceneReplay(self.rb, self.dv)
-        self.gui = GUI('replay-local')
+        self.gui = GUI('replay-local',self)
         self.gui.start()
         self.gui.drawMainWindowWhiteBG(
             (self.dv.x-1000, self.dv.y-1000),

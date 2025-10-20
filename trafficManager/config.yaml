@@ -1,61 +1,147 @@
+# 动画开关
 ANIMATION: False
-VERBOSE: False # print detailed debug message
-CSV: False # write trajectories in trajectories.csv
-EGO_PLANNER: True # whether exist an ego planner
-USE_DECISION_MAKER: False # whether use decision maker results in planning module
 
+# 详细调试信息输出开关
+VERBOSE: False # print detailed debug message
+
+# 是否将轨迹写入CSV文件
+CSV: False # write trajectories in trajectories.csv
+
+# 是否启用Ego车辆规划器
+EGO_PLANNER: True # whether exist an ego planner
+
+# 是否在规划模块中使用决策器结果
+USE_DECISION_MAKER: True # whether use decision maker results in planning module
+
+# 最大道路宽度 [米]（已弃用）
 MAX_ROAD_WIDTH: 3.5 # [DEPRECATED]: maximum road width [m]
+
+# 道路宽度采样长度 [米]
 D_ROAD_W: 0.75 # road width sampling length [m]
+
+# 最大预测时间 [秒]
 MAX_T: 8.0 # max prediction time [m]mcts
+
+# 最小预测时间 [秒]
 MIN_T: 5.0 # min prediction time [m]
+
+# 时间刻度 [秒]
 DT: 0.1 # time tick [s]
+
+# 目标纵向速度采样长度 [公里/小时]
 D_T_S: 2.5 # target longtitude vel sampling length [km/h]
+
+# 目标纵向速度采样数量
 N_D_S_SAMPLE: 2 # sampling number of target longtitude vel
+
+# 变道纵向采样长度 [米]
 S_SAMPLE: 0.5 #lane change longtitude sample length [m]
+
+# 纵向采样长度的采样数量
 N_S_SAMPLE: 8 #sampling number for longtitude sample length
+
+# 最大曲率 [1/米]
 MAX_CURVATURE: 1.0 # maximum curvature [1/m]
 
 ############
-# DECISION MAKER module
+# 决策器模块配置
 ###########
-DECISION_INTERVAL: 3.0 #[s]
+
+# 决策间隔时间 [秒]
+DECISION_INTERVAL: 3.0 #[s] 
+
+# 决策分辨率 [秒]
 DECISION_RESOLUTION: 1.5 #[s]
+
+# 最大决策时间 [秒]
 MAX_DECISION_TIME: 7.0 #[s]
+
+# 变道时的横向速度 [米/秒]
 LATERAL_SPEED: 1.17 # lateral speed for lane change [m/s], default: 3.5 / 3.0
+
+# 默认纵向加速度 [米/秒²]
 DEFAULT_ACC: 0.7 # default longitude acceleration [m/s^2]
 
-
 ############
-# PLANNING module
+# 规划模块配置
 ###########
-# planning weights
+
+# 规划权重参数
 weights:
+  # 偏航平滑度成本权重
   W_YAW: 1.0 # smoothness cost yaw difference
+  
+  # 曲率成本权重
   W_CUR: 1.0 # curvature cost
+  
+  # 速度差异成本权重
   W_VEL_DIFF: 5.0e-1 # velocity diff cost
+  
+  # 时间成本权重
   W_T: 1.0 # time cost
+  
+  # 障碍物成本权重
   W_OBS: 1.0 # obstacle cost
+  
+  # 引导成本权重
   W_GUIDE: 5.0 # guidance cost
+  
+  # 加速度成本权重
   W_ACC: 1.0 # acceleration cost
+  
+  # 加加速度(急动度)成本权重
   W_JERK: 1.0 # jerk cost
+  
+  # 碰撞成本权重
   W_COLLISION: 4.0 # collision cost
+  
+  # 停车惩罚权重
   W_STOP: 100 # punishment for stop
+  
+  # 变道惩罚权重
   W_CHANGELANE: 50 # punishment for lane change
 
-# 目前没有使用，直接从外界传入
+# 车辆参数配置
 vehicle:
+  # 轿车参数
   car:
+    # 车长 [米]
     length: 5 # 车长
+    
+    # 车宽 [米]
     width: 2 #车宽
+    
+    # 最大加速度 [米/秒²]
     max_accel: 2.6 # 最大加速度
+    
+    # 最大减速度 [米/秒²]（注意带负号）
     max_decel: -4.5 #最大减速度，注意一定负号
+    
+    # 最大速度 [米/秒]
     max_speed: 55 # 最大速度 m/s
+    
+    # 轴距 [米]（暂未使用）
     L: 2.9 # wheel base 轴距, 暂未使用
+    
+    # 最小转弯半径 [米]（暂未使用）
     R: 1.5 # minimum turning radius 最小转弯半径， 暂未使用
+    
+    # 课程距离（暂未使用）
     ds: 0.1 # course distanse， 暂未使用
+  
+  # 卡车参数
   truck:
+    # 车长 [米]
     length: 7.2 # 车长
+    
+    # 车宽 [米]
     width: 2.3
+    
+    # 最大加速度 [米/秒²]
     max_accel: 2.0
+    
+    # 最大减速度 [米/秒²]
     max_decel: -4.0
+    
+    # 最大速度 [米/秒]
     max_speed: 40

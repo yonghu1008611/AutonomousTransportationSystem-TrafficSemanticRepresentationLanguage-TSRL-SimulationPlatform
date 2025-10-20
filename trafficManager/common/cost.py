@@ -3,6 +3,7 @@ This module provides functions to calculate various costs for a given path in a 
 These costs include smoothness, velocity difference, time, obstacle, guidance, acceleration, jerk,
 stop, and lane change costs. The module also provides a main function to run the calculations.
 """
+import logging
 from typing import Union
 import numpy as np
 import obstacle_cost
@@ -65,6 +66,11 @@ def time(trajectory: Trajectory, weight_config: dict) -> float:
     Returns:
         float: The time cost.
     """
+    # 添加对trajectory.states的空值检查，避免索引越界
+    if not trajectory.states:
+        logging.error(f"Trajectory states is empty: {trajectory}")
+        return 0.0
+        
     return weight_config["W_T"] * trajectory.states[-1].t
 
 

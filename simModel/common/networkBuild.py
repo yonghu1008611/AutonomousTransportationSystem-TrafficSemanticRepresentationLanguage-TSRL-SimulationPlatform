@@ -332,7 +332,7 @@ class NetworkBuild:
                 addRoot = addTree.getroot()
                 for child in addRoot:
                     if child.tag == 'poi' and child.attrib.get('id', '').startswith('RSU_'):
-                        # 解析RSU的投影信息
+                        # 解析RSU的位置投影信息
                         rsu_id = child.attrib['id']
                         rsu_x = float(child.attrib['x'])
                         rsu_y = float(child.attrib['y'])

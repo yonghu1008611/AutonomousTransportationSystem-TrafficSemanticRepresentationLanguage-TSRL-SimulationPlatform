@@ -1,0 +1,6 @@
+VehicleType(3);
+LetGoStopLine(x):-VehicleType(x);
+TransferVehicleTo(12):-ClassificationError(x);
+LetDecelerate(x):-StationAhead(x);
+ChangeLine(x):-ObstacleLocation(y),OtherVehicleLocation(z);
+ASK LetGoStopLine(x);

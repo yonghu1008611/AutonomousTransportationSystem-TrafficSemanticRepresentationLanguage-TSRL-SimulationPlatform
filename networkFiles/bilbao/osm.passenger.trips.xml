@@ -10,11 +10,11 @@
     <lanes value="True"/>
     <min-distance.fringe value="10.0"/>
     <min-distance value="300.0"/>
-    <net-file value="/home/wayne/code/LimSim/2023-03-07-17-17-00/2023-03-08-11-03-46/osm.net.xml.gz"/>
+    <net-file value="/home/wayne/code/ATSISP/2023-03-08-11-05-19/osm.net.xml.gz"/>
     <remove-loops value="True"/>
-    <route-file value="/home/wayne/code/LimSim/2023-03-07-17-17-00/2023-03-08-11-03-46/osm.passenger.rou.xml"/>
+    <route-file value="/home/wayne/code/ATSISP/2023-03-08-11-05-19/osm.passenger.rou.xml"/> 
     <trip-attributes value="departLane=&quot;best&quot;"/>
-    <output-trip-file value="/home/wayne/code/LimSim/2023-03-07-17-17-00/2023-03-08-11-03-46/osm.passenger.trips.xml"/>
+    <output-trip-file value="/home/wayne/code/ATSISP/2023-03-08-11-05-19/osm.passenger.trips.xml"/>
     <prefix value="veh"/>
     <validate value="True"/>
     <vehicle-class value="passenger"/>
@@ -25,12 +25,12 @@
 <configuration xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/duarouterConfiguration.xsd">
 
     <input>
-        <net-file value="/home/wayne/code/LimSim/2023-03-07-17-17-00/2023-03-08-11-03-46/osm.net.xml.gz"/>
-        <route-files value="/home/wayne/code/LimSim/2023-03-07-17-17-00/2023-03-08-11-03-46/osm.passenger.trips.xml"/>
+        <net-file value="/home/wayne/code/ATSISP/2023-03-08-11-05-19/osm.net.xml.gz"/>
+        <route-files value="/home/wayne/code/ATSISP/2023-03-08-11-05-19/osm.passenger.trips.xml"/>
     </input>
 
     <output>
-        <output-file value="/home/wayne/code/LimSim/2023-03-07-17-17-00/2023-03-08-11-03-46/osm.passenger.trips.xml.tmp"/>
+        <output-file value="/home/wayne/code/ATSISP/2023-03-08-11-05-19/osm.passenger.trips.xml.tmp"/>
         <alternatives-output value="NUL"/>
         <write-trips value="true"/>
     </output>

@@ -1,0 +1,8 @@
+SelfVehicle(1);
+Redlight(0);
+Redlight(1);
+EmergencyStation(0);
+
+ChangeLane(y):-SelfVehicle(y),EmergencyStation(x);
+
+ASK ChangeLane(y)

@@ -1,0 +1,29 @@
+=== TSRL详细推理展示 ===
+
+车辆ID: 1
+时间: 2025-10-20 16:18:23
+
+=== 匹配的规则 ===
+ChangeLane(y):-SelfVehicle(y),EmergencyStation(x);
+
+=== 消息历史 ===
+1. SelfVehicle(1);
+2. Redlight(0);
+3. Redlight(1);
+4. EmergencyStation(0);
+
+=== 推理输入文件内容 (Inference_1_input.txt) ===
+SelfVehicle(1);
+Redlight(0);
+Redlight(1);
+EmergencyStation(0);
+
+ChangeLane(y):-SelfVehicle(y),EmergencyStation(x);
+
+ASK ChangeLane(y)
+
+=== TSRL推理输出内容 (Inference_1_output.txt) ===
+{'y': '1'}
+
+=== 解析后的决策结果 ===
+ChangeLane(1)

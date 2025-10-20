@@ -1,0 +1,4 @@
+SelfVehicle(HV);
+EmergencyStation(RV);
+ChangeLane(y):-SelfVehicle(y),EmergencyStation(x);
+ASK ChangeLane(y);

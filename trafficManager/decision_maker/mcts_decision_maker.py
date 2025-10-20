@@ -32,6 +32,7 @@ logging = logger.get_logger(__name__)
 class EgoDecisionMaker(AbstractEgoDecisionMaker):
     def make_decision(
         self,
+        T: float,
         observation: Observation,
         road_graph: RoadGraph,
         prediction: Prediction = None,

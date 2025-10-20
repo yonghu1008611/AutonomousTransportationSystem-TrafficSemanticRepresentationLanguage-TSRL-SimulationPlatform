@@ -22,7 +22,12 @@ import sys
 import os
 import time
 
-log = logger.setup_app_level_logger(file_name="app_debug_VRSU.log")
+# 将日志文件保存到DEBUG_TSRL目录
+log_dir = "DEBUG_TSRL"
+if not os.path.exists(log_dir):
+    os.makedirs(log_dir)
+log_file_path = os.path.join(log_dir, "app_debug_VRSU.log")
+log = logger.setup_app_level_logger(file_name=log_file_path)
 
 file_paths = {
     "Vehicle_RSU_Interacting": (
@@ -37,9 +42,9 @@ def run_model(
     rou_file,
     add_file,
     ego_veh_id="AV_0",
-    data_base=None,
+    data_base='Vehicle_RSU_Interacting.db',
     SUMOGUI="D:\\sumo-win64-1.15.0\\sumo-1.15.0\\bin\\sumo-gui.exe",
-    sim_note="Vehicle-RSU interaction simulation, LimSim-v-0.2.0.",
+    sim_note="Vehicle-RSU interaction simulation, ATSISP-v-1.0.",
     carla_cosim=False,
     max_sim_time=200,  # 单位秒
     communication=True,  # 全局通信管理器
@@ -81,89 +86,26 @@ def run_model(
                 if model.timeStep % 5 == 0:
                     # 导出场景 
                     #  7.27 打印exportSce()得到的vehicles中的stop_info
-                    roadgraph, vehicles = model.exportSce() 
+                    roadgraph, vehicles, facilities = model.exportSce()
                     # 如果自车开始行驶且场景存在
-                    if model.tpStart and roadgraph: 
+                    if model.tpStart and roadgraph:
+                        log.info(f"Frame {model.timeStep}: Calling planner.plan with {len(vehicles)} vehicles and {len(facilities)} facilities")
                         trajectories = planner.plan(
-                        model.timeStep * 0.1, roadgraph, vehicles
+                        model.timeStep * 0.1, roadgraph, vehicles, facilities
                         )# 规划轨迹
+                        log.info(f"Frame {model.timeStep}: Completed planner.plan")
                         model.setTrajectories(trajectories) # 设置轨迹
                     else:
                         model.ego.exitControlMode() # 退出控制模式
-
                 model.updateVeh()
             except TraCIException as e:
                 log.error(f"TraCI error at step {model.timeStep}: {str(e)}")
                 break
             except Exception as e:
+                import traceback
                 log.error(f"Unexpected error at step {model.timeStep}: {str(e)}")
+                log.error(f"Traceback: {traceback.format_exc()}")
                 break
-        # # 主模拟循环
-        # while traci.simulation.getMinExpectedNumber() > 0:
-        #     traci.simulationStep()
-
-            # # 1. RSU 收集前方 200 m 路况
-            # rsu_x = 400  # RSU 位置
-            # detect_range = 200  # 检测范围
-            # vehicles = []
-            # for v in traci.vehicle.getIDList():
-            #     x, y = traci.vehicle.getPosition(v)
-            #     # 如果RSU前方检测范围内存在车辆
-            #     if rsu_x <= x <= rsu_x + detect_range:
-            #         vehicles.append({
-            #             "id": v,
-            #             "lane": traci.vehicle.getLaneID(v),
-            #             "speed": traci.vehicle.getSpeed(v),
-            #             "pos": traci.vehicle.getLanePosition(v),
-            #             "x": x,
-            #             "y": y
-            #         })
-
-            # # 2. 广播 JSON 互操作语句
-            # msg = {
-            #     "type": "RSU_BROADCAST",
-            #     "range": detect_range,
-            #     "vehicles": vehicles,
-            #     "rsu_position": {"x": rsu_x, "y": 0}
-            # }
-            
-            # # 车辆端用普通参数存取
-            # if ego_veh_id in traci.vehicle.getIDList():
-            #     traci.vehicle.setParameter(ego_veh_id, "rsu_msg", json.dumps(msg))
-
-            # # 3. AV 解析并决策
-            # if ego_veh_id in traci.vehicle.getIDList():
-            #     raw = traci.vehicle.getParameter(ego_veh_id, "rsu_msg")
-            #     if raw:
-            #         try:
-            #             data = json.loads(raw)
-            #             # 简单推理：若前方外侧车道空 → 变道
-            #             outer = [v for v in data["vehicles"] if "main_2" in v["lane"]]
-            #             if not outer:
-            #                 traci.vehicle.changeLane(ego_veh_id, 2, 3)  # 2=外侧车道，3 s
-            #                 log.info(f"{ego_veh_id} changing to outer lane")
-            #             else:
-            #                 # 根据前车速度调整速度
-            #                 front_vehicles = [v for v in data["vehicles"] 
-            #                                 if v["id"] != ego_veh_id and 
-            #                                 "main_1" in v["lane"]]
-            #                 if front_vehicles:
-            #                     front_speed = min(v["speed"] for v in front_vehicles)
-            #                     new_speed = max(15, front_speed - 2)
-            #                     traci.vehicle.setSpeed(ego_veh_id, new_speed)
-            #                     log.debug(f"{ego_veh_id} adjusting speed to {new_speed}")
-            #         except json.JSONDecodeError as e:
-            #             log.error(f"Failed to parse RSU message: {e}")
-
-            # # 控制模拟速度
-            # time.sleep(0.1)
-            
-            # # 检查是否达到最大模拟时间
-            # current_time = traci.simulation.getTime()
-            # if current_time >= max_sim_time:
-            #     log.info(f"Maximum simulation time ({max_sim_time}s) reached")
-            #     break
-
     except Exception as e:
         log.error(f"Error during model execution: {str(e)}")
         raise

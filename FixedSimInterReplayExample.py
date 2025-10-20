@@ -2,8 +2,14 @@ from simModel.fixedScene import interReplay
 from trafficManager.traffic_manager import TrafficManager
 
 import logger
+import os
 # config a logger, set use_stdout=True to output log to terminal
-log = logger.setup_app_level_logger(file_name="app_debug.log",
+# 将日志文件保存到DEBUG_TSRL目录
+log_dir = "DEBUG_TSRL"
+if not os.path.exists(log_dir):
+    os.makedirs(log_dir)
+log_file_path = os.path.join(log_dir, "app_debug.log")
+log = logger.setup_app_level_logger(file_name=log_file_path,
                                     level="DEBUG",
                                     use_stdout=False)
 

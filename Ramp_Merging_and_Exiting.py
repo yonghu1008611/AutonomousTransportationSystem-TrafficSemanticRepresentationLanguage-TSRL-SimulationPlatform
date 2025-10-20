@@ -16,10 +16,15 @@ import logger
 import traci
 from traci import TraCIException
 import traci.constants as tc
-import sys
-
-log = logger.setup_app_level_logger(file_name="app_debug_RME_1.log")
+import logger
 import os
+
+# 将日志文件保存到DEBUG_TSRL目录
+log_dir = "DEBUG_TSRL"
+if not os.path.exists(log_dir):
+    os.makedirs(log_dir)
+log_file_path = os.path.join(log_dir, "app_debug_RME.log")
+log = logger.setup_app_level_logger(file_name=log_file_path)
 
 file_paths = {
     "Ramp_Merging_and_Exiting": (
@@ -34,7 +39,7 @@ def run_model(
     ego_veh_id="2",
     data_base=None,
     SUMOGUI="D:\sumo-win64-1.15.0\sumo-1.15.0\bin\sumo-gui.exe",
-    sim_note="example simulation, LimSim-v-0.2.0.",
+    sim_note="example simulation, ATSISP-v-1.0.",
     carla_cosim=False,
     max_sim_time=200, # 新增参数，单位秒
     communication = True,# 新增参数，全局通信管理器
@@ -101,12 +106,6 @@ if __name__ == "__main__":
     try:
         net_file, rou_file = file_paths['Ramp_Merging_and_Exiting']
         print("net_file:",net_file,",rou_file:",rou_file)
-        
-        # 在指定路径打开input_FCW文本文档并写入指定内容
-        # content_to_write = "EmergencyStation(RV);\nSelfVehicle(HV);\nChangeLane(y):-SelfVehicle(y),EmergencyStation(x);\nASK ChangeLane(y);"
-        # with open(r'D:/Analysis and Inference-1/Analysis and Inference/LimSim-2025.8/LimSim/TSIL/input_FCW.txt', 'w') as file:
-        #     file.write(content_to_write)
-
         run_model(net_file, 
                 rou_file,
                 ego_veh_id="2",

@@ -1,4 +1,5 @@
 import time
+import traci
 
 from common.observation import Observation
 from common.vehicle import Behaviour, control_Vehicle
@@ -8,6 +9,7 @@ from predictor.abstract_predictor import Prediction
 
 import logger
 import trafficManager.planner.trajectory_generator as traj_generator
+from TSRL_interaction.vehicle_communication import Performative
 from utils.obstacles import DynamicObstacle, ObsType, Rectangle
 from utils.roadgraph import JunctionLane, NormalLane, RoadGraph
 from utils.trajectory import State, Trajectory
@@ -27,7 +29,7 @@ class EgoPlanner(AbstractEgoPlanner):
              prediction: Prediction, # 预测
              T, # 时间
              config, # 配置
-             ego_decision: MultiDecision = None) -> Trajectory: # 决策
+             ego_decision: EgoDecision = None) -> Trajectory: # 决策
 
         vehicle_id = ego_veh.id # 车辆ID
         start = time.time() # 开始时间
@@ -76,8 +78,16 @@ class EgoPlanner(AbstractEgoPlanner):
         lanes = [current_lane, next_lane] if next_lane != None else [
             current_lane]
 
+        # 9.19 确定车辆行为：优先使用决策中的行为，如果没有则使用车辆当前行为
+        vehicle_behaviour = ego_veh.behaviour
+        if ego_decision and ego_decision.result:
+            decision_list = ego_decision.result
+            if decision_list and decision_list[0].behaviour is not None:
+                vehicle_behaviour = decision_list[0].behaviour
+                logging.info(f"Using behaviour from decision: {vehicle_behaviour}")
+
         # 如果当前车辆行为是保持车道
-        if ego_veh.behaviour == Behaviour.KL:
+        if vehicle_behaviour == Behaviour.KL:
             if isinstance(current_lane, NormalLane) and next_lane != None and isinstance(next_lane, JunctionLane) and (next_lane.currTlState == "R" or next_lane.currTlState == "r"):
                 # Stop
                 path = traj_generator.stop_trajectory_generator(
@@ -95,15 +105,14 @@ class EgoPlanner(AbstractEgoPlanner):
                     )
 
         # 如果当前车辆行为是停止
-
-        elif ego_veh.behaviour == Behaviour.STOP:
+        elif vehicle_behaviour == Behaviour.STOP:
             # Stopping
             path = traj_generator.stop_trajectory_generator(
                 ego_veh, lanes, obs_list, roadgraph, config, T,
             )
-        elif ego_veh.behaviour == Behaviour.LCL:
+        elif vehicle_behaviour == Behaviour.LCL:
             # 8.27 新增：发送变道互操作语言
-            ego_veh.communicator.send(f"ChangeLane({ego_veh.id})")
+            ego_veh.communicator.send(f"LeftChangeLane({ego_veh.id});",performative=Performative.Inform) 
             # Turn Left
             left_lane = roadgraph.get_lane_by_id(current_lane.left_lane())
             path = traj_generator.lanechange_trajectory_generator(
@@ -113,9 +122,18 @@ class EgoPlanner(AbstractEgoPlanner):
                 config,
                 T,
             )
-        elif ego_veh.behaviour == Behaviour.LCR:
+            # 10.20 确认车辆是否已经在目标车道上
+            print(traci.vehicle.getLaneID(ego_veh.id))
+            if traci.vehicle.getLaneID(ego_veh.id) == left_lane.id:
+                # 车辆已在目标车道，发送完成变道消息并保持车道
+                ego_veh.communicator.send(f"LeftChangeLaneComplete({ego_veh.id});", performative=Performative.Inform)
+                ego_veh.behaviour = Behaviour.KL
+                # path = traj_generator.lanekeeping_trajectory_generator(
+                #     ego_veh, lanes, obs_list, config, T,
+                # )
+        elif vehicle_behaviour == Behaviour.LCR:
             # 8.27 新增：发送变道互操作语言
-            ego_veh.communicator.send(f"ChangeLane({ego_veh.id})")
+            ego_veh.communicator.send(f"RightChangeLane({ego_veh.id});",performative=Performative.Inform) 
             # Turn Right
             right_lane = roadgraph.get_lane_by_id(
                 current_lane.right_lane())
@@ -126,7 +144,7 @@ class EgoPlanner(AbstractEgoPlanner):
                 config,
                 T,
             )
-        elif ego_veh.behaviour == Behaviour.IN_JUNCTION:
+        elif vehicle_behaviour == Behaviour.IN_JUNCTION:
             # in Junction. for now just stop trajectory
             path = traj_generator.stop_trajectory_generator(
                 ego_veh, lanes, obs_list, roadgraph, config, T,
@@ -134,7 +152,11 @@ class EgoPlanner(AbstractEgoPlanner):
         else:
             logging.error(
                 "Vehicle {} has unknown behaviour {}".format(
-                    ego_veh.id, ego_veh.behaviour)
+                    ego_veh.id, vehicle_behaviour)
+            )
+            # Default to keep lane behavior if unknown
+            path = traj_generator.lanekeeping_trajectory_generator(
+                ego_veh, lanes, obs_list, config, T,
             )
         logging.debug(
             "Vehicle {} Total planning time: {}".format(

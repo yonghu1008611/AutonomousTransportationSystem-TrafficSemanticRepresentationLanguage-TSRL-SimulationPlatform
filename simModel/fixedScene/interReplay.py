@@ -87,7 +87,7 @@ class InterReplayModel:
 
         self.lsr = LocalSceneReplay(self.rb, self.dv)
 
-        self.gui = GUI('real-time-local')
+        self.gui = GUI('real-time-local',self)
         self.gui.start()
         self.gui.drawMainWindowWhiteBG(
             (self.dv.x-100, self.dv.y-100), 
@@ -288,7 +288,7 @@ class InterReplayModel:
         return veh
 
     def isInvolved(self, veh: Vehicle, currVehs: dict[str, Vehicle]) -> bool:
-        # if the vehicle's dbTrajectory is too short, limsim will take over it 
+        # if the vehicle's dbTrajectory is too short, ATSISP will take over it 
         # until the vehicle drive out of the AoI, avoiding the vhicles's suddenly fading.
         if len(veh.dbTrajectory.states) <= 10:
             return True

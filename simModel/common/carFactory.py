@@ -1,5 +1,5 @@
 """
-功能：创建LimSim仿真平台上的车辆(偏向可视化)
+功能：创建ATPSIP仿真平台上的车辆(偏向可视化)
 Vehicle：
     - 仿真基础 ：提供SUMO仿真环境中的基本车辆功能
     - 数据存储 ：存储车辆的历史轨迹数据（位置、速度、加速度等）
@@ -287,9 +287,6 @@ class Vehicle:# 定义车辆类别
             # 7.17: 当stop_flag为True时触发紧急停车流程
             # 尝试获取车辆的停止状态
             # print(traci.vehicle.getStopState(self.id)) 
-
-            if stop_flag:
-                self.emergency_stop()  # 7.17：调用紧急停车方法
         else:
             traci.vehicle.setLaneChangeMode(self.id, 0)
             traci.vehicle.setSpeedMode(self.id, 0)
@@ -381,12 +378,15 @@ class Vehicle:# 定义车辆类别
         # 相对顶点
         relativeVex = [[self.x+rv[0]-ex, self.y+rv[1]-ey]
                        for rv in rotVertexes]
+        # 转换为DPG坐标，以供后续进行绘画
         drawVex = [
             [
                 ctf.zoomScale*(ctf.drawCenter+rev[0]+ctf.offset[0]),
                 ctf.zoomScale*(ctf.drawCenter-rev[1]+ctf.offset[1])
             ] for rev in relativeVex
         ]
+        # 10.14 将drawVex中的点坐标（numpy）转换为浮点数
+        drawVex = [[np.asarray(px).item(), np.asarray(py).item()] for px, py in drawVex]
         if vtag == 'ego':
             vcolor = (211, 84, 0)
         elif vtag == 'AoI':

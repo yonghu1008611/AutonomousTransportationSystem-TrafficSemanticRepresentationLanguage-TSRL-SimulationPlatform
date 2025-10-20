@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<nodes xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/nodes_file.xsd">
+  <!-- dead ends -->
+  <node id="J1" x="-20.00" y="60.00" type="dead_end"/>
+  <node id="J5" x="140.00" y="60.00" type="dead_end"/>
+  <node id="J6" x="60.00" y="140.00" type="dead_end"/>
+  <node id="J7" x="60.00" y="-20.00" type="dead_end"/>
+
+  <!-- traffic-light centre -->
+  <node id="J2" x="60.00" y="60.00" type="traffic_light" tl="J2"/>
+</nodes>

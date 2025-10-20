@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SUMO路网手动生成步骤详解</title>
+<base href="file:///e:/Analysis and Inference/Analysis and Inference/Autonomous Transportation Semantic Interaction Simulation Platform-2025.10/ATSISP/">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .main-container {
+            display: flex;
+            max-width: 1200px;
+            margin: 0 auto;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .content {
+            flex: 1;
+            padding: 30px;
+            min-width: 0;
+        }
+        .sidebar {
+            width: 350px;
+            background-color: #f8f9fa;
+            border-left: 1px solid #e9ecef;
+            padding: 20px;
+            overflow-y: auto;
+            max-height: calc(100vh - 40px);
+        }
+        .sidebar h2 {
+            color: #0066cc;
+            border-bottom: 2px solid #0066cc;
+            padding-bottom: 10px;
+            margin-top: 0;
+        }
+        .file-sample {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .file-header {
+            background-color: #0066cc;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 5px 5px 0 0;
+            font-weight: bold;
+        }
+        .file-content {
+            padding: 12px;
+            font-family: monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+            overflow-x: auto;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        h1 {
+            color: #0066cc;
+            text-align: center;
+            border-bottom: 2px solid #0066cc;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #333;
+            margin-top: 30px;
+            border-left: 4px solid #0066cc;
+            padding-left: 10px;
+        }
+        h3 {
+            color: #555;
+            margin-top: 20px;
+        }
+        ul, ol {
+            padding-left: 20px;
+        }
+        li {
+            margin-bottom: 8px;
+        }
+        .step {
+            background-color: #f0f8ff;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+        }
+        .rule {
+            background-color: #fff8dc;
+            padding: 10px;
+            border-left: 3px solid #ffa500;
+            margin: 10px 0;
+        }
+        .tip {
+            background-color: #e6ffe6;
+            padding: 10px;
+            border-left: 3px solid #00cc00;
+            margin: 10px 0;
+        }
+        .command {
+            background-color: #2d2d2d;
+            color: #ffffff;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: monospace;
+            overflow-x: auto;
+        }
+        .standard {
+            background-color: #fff0f5;
+            padding: 10px;
+            border-left: 3px solid #ff69b4;
+            margin: 10px 0;
+        }
+        code {
+            background-color: #f4f4f4;
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <div class="content">
+            <h1>SUMO路网手动生成步骤详解</h1>
+        
+        <div class="step">
+            <h2>a) 总体思路</h2>
+            <ol>
+                <li><strong>先画节点：</strong>把路口、断头、交叉路口全部当作"点"，编写<code>nodes.xml</code>文件。</li>
+                <li><strong>再画边：</strong>把每条车道当作"线段"，编写<code>edges.xml</code>文件。</li>
+                <li><strong>最后连线：</strong>告诉软件"哪条边连到哪条边"，编写<code>connections.xml</code>文件。</li>
+                <li><strong>一键生成：</strong>使用<code>netconvert</code>指令，由用户自定义路网名称，把三个文件合成为路网文件<code>xxx.net.xml</code>。</li>
+            </ol>
+        </div>
+        
+        <div class="step">
+            <h2>b) 步骤详解</h2>
+            
+            <h3>i. 节点文件 nodes.xml</h3>
+            <div class="rule">
+                <strong>格式：</strong><code>&lt;node id="任意名" x="世界坐标" y="世界坐标" type="priority"/&gt;</code>
+            </div>
+            <div class="rule">
+                <strong>规则：</strong>
+                <ol>
+                    <li>每个路口、断头、分岔口必须有一个node。</li>
+                    <li>type: priority（无信号）、traffic_light（有信号）、dead_end（断头）。</li>
+                    <li>x/y:用世界坐标（米），可正可负。</li>
+                </ol>
+            </div>
+            <div class="tip">
+                <strong>技巧：</strong>先画草图，按"米"标坐标，可10m一格，避免重叠。
+            </div>
+            
+            <h3>ii. 边文件 edges.xml</h3>
+            <div class="rule">
+                <strong>格式：</strong><code>&lt;edge id="任意名" from="起点node" to="终点node" numLanes ="几车道" speed="m/s"/&gt;</code>
+            </div>
+            <div class="rule">
+                <strong>规则：</strong>
+                <ol>
+                    <li>单向：一条 edge 只画一个方向。</li>
+                    <li>双向：两个相反 edge。</li>
+                    <li>多车道：numLanes="3" 即可。</li>
+                    <li>形状：直边不写 shape；弯道用 <code>shape="x1,y1 x2,y2 …"</code> 画样条。</li>
+                </ol>
+            </div>
+            <div class="tip">
+                <strong>技巧：</strong>id 建议：方向+序号，如"N_C""C_S""ramp_1"。
+            </div>
+            
+            <h3>iii. 连接文件 connections.xml</h3>
+            <div class="rule">
+                <strong>格式：</strong><code>&lt;connection from="上游边" to="下游边" fromLane ="上游车道号" toLane ="下游车道号"/&gt;</code>
+            </div>
+            <div class="rule">
+                <strong>规则：</strong>
+                <ol>
+                    <li>不写 connections → netconvert 自动连（常错位）。</li>
+                    <li>只写"非默认"连接：左转、右转、匝道汇入。</li>
+                    <li>fromLane/toLane：0=最内侧，1=中间，2=最外侧</li>
+                </ol>
+            </div>
+            <div class="tip">
+                <strong>技巧：</strong>用 netedit 连好后导出，再复制进connections.xml。
+            </div>
+        </div>
+        
+        <div class="step">
+            <h2>c) 一键合成</h2>
+            <p>把三个文件放在同一目录，在命令提示符中输入以下指令：</p>
+            <div class="command">
+                netconvert --node-files nodes.xml --edge-files edges.xml --connection-files connections.xml -o xxx.net.xml
+            </div>
+            <p>生成的<code>xxx.net.xml</code>即可被SUMO-GUI直接加载。</p>
+        </div>
+        
+        <div class="step">
+            <h2>d) 常见问题与技巧</h2>
+            <ul>
+                <li><strong>车道号方向：</strong>0 永远是最内侧（左/内），向右/外递增。</li>
+                <li><strong>shape 坐标：</strong>与 world的x/y 一致，可正可负，单位：米。</li>
+                <li><strong>friendlyPos=True：</strong>允许检测器/停止点越界，防止报错。</li>
+                <li><strong>dead_end节点：</strong>断头路口必须写，否则netconvert报错。</li>
+                <li><strong>先直后弯：</strong>直边不写 shape；弯道用3-5个坐标点即可光滑。</li>
+            </ul>
+        </div>
+        
+        <div class="step">
+            <h2>e) 验收标准</h2>
+            <div class="standard">
+                <ol>
+                    <li><strong>GUI成功运行：</strong>车道数、方向、形状与草图一致。</li>
+                    <li><strong>车辆成功行驶：</strong>无"could not insert connection"报错。</li>
+                    <li><strong>其他添加元素：</strong>注意与 world 坐标对齐。</li>
+                </ol>
+            </div>
+            <p>按照以上步骤，即可用"nodes + edges + connections"三文件的格式，生成任意复杂度的 SUMO 路网。</p>
+        </div>
+    </div>
+    <div class="sidebar">
+        <h2>XML文件样例</h2>
+        
+        <div class="file-sample">
+            <div class="file-header">nodes.xml</div>
+            <div class="file-content">&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;nodes xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/nodes_file.xsd"&gt;
+  &lt;!-- dead ends --&gt;
+  &lt;node id="J1" x="-20.00" y="60.00" type="dead_end"/&gt;
+  &lt;node id="J5" x="140.00" y="60.00" type="dead_end"/&gt;
+  &lt;node id="J6" x="60.00" y="140.00" type="dead_end"/&gt;
+  &lt;node id="J7" x="60.00" y="-20.00" type="dead_end"/&gt;
+
+  &lt;!-- traffic-light centre --&gt;
+  &lt;node id="J2" x="60.00" y="60.00" type="traffic_light" tl="J2"/&gt;
+&lt;/nodes&gt;</div>
+        </div>
+        
+        <div class="file-sample">
+            <div class="file-header">edges.xml</div>
+            <div class="file-content">&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;edges xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/edges_file.xsd"&gt;
+
+  &lt;!-- incoming to J2 --&gt;
+  &lt;edge id="-E0" from="J2" to="J1" priority="-1" numLanes="2" speed="13.89"/&gt;
+  &lt;edge id="-E2" from="J5" to="J2" priority="-1" numLanes="2" speed="13.89"/&gt;
+  &lt;edge id="-E3" from="J6" to="J2" priority="-1" numLanes="2" speed="13.89"/&gt;
+  &lt;edge id="-E4" from="J7" to="J2" priority="-1" numLanes="2" speed="13.89"/&gt;
+
+  &lt;!-- outgoing from J2 --&gt;
+  &lt;edge id="E0" from="J1" to="J2" priority="-1" numLanes="2" speed="13.89"/&gt;
+  &lt;edge id="E2" from="J2" to="J5" priority="-1" numLanes="2" speed="13.89"/&gt;
+  &lt;edge id="E3" from="J2" to="J6" priority="-1" numLanes="2" speed="13.89"/&gt;
+  &lt;edge id="E4" from="J2" to="J7" priority="-1" numLanes="2" speed="13.89"/&gt;
+&lt;/edges&gt;</div>
+        </div>
+        
+        <div class="file-sample">
+            <div class="file-header">connections.xml</div>
+            <div class="file-content">&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;connections xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/connections_file.xsd"&gt;
+
+  &lt;!-- -E2 →  E3 (right)  --&gt;
+  &lt;connection from="-E2" to="E3" fromLane="0" toLane="0" /&gt;
+  &lt;connection from="-E2" to="E3" fromLane="0" toLane="1" /&gt;
+  &lt;!-- -E2 → -E0 (straight) --&gt;
+  &lt;connection from="-E2" to="-E0" fromLane="0" toLane="0" /&gt;
+  &lt;connection from="-E2" to="-E0" fromLane="0" toLane="1" /&gt;
+  &lt;!-- -E2 →  E4 (left)   --&gt;
+  &lt;connection from="-E2" to="E4" fromLane="1" toLane="0" /&gt;
+  &lt;connection from="-E2" to="E4" fromLane="1" toLane="1" /&gt;
+
+  &lt;!-- -E3 → -E0 (right)  --&gt;
+  &lt;connection from="-E3" to="-E0" fromLane="0" toLane="0" /&gt;
+  &lt;connection from="-E3" to="-E0" fromLane="0" toLane="1" /&gt;
+  &lt;!-- -E3 →  E4 (straight)--&gt;
+  &lt;connection from="-E3" to="E4" fromLane="0" toLane="0" /&gt;
+  &lt;connection from="-E3" to="E4" fromLane="0" toLane="1" /&gt;
+  &lt;!-- -E3 →  E2 (left)   --&gt;
+  &lt;connection from="-E3" to="E2" fromLane="1" toLane="0" /&gt;
+  &lt;connection from="-E3" to="E2" fromLane="1" toLane="1" /&gt;
+
+  &lt;!-- -E4 →  E2 (right)  --&gt;
+  &lt;connection from="-E4" to="E2" fromLane="0" toLane="0" /&gt;
+  &lt;connection from="-E4" to="E2" fromLane="0" toLane="1" /&gt;
+  &lt;!-- -E4 →  E3 (straight)--&gt;
+  &lt;connection from="-E4" to="E3" fromLane="0" toLane="0" /&gt;
+  &lt;connection from="-E4" to="E3" fromLane="0" toLane="1" /&gt;
+  &lt;!-- -E4 → -E0 (left)   --&gt;
+  &lt;connection from="-E4" to="-E0" fromLane="1" toLane="0" /&gt;
+  &lt;connection from="-E4" to="-E0" fromLane="1" toLane="1" /&gt;
+
+  &lt;!--  E0 →  E4 (right)  --&gt;
+  &lt;connection from="E0" to="E4" fromLane="0" toLane="0" /&gt;
+  &lt;connection from="E0" to="E4" fromLane="0" toLane="1" /&gt;
+  &lt;!--  E0 →  E2 (straight)--&gt;
+  &lt;connection from="E0" to="E2" fromLane="0" toLane="0" /&gt;
+  &lt;connection from="E0" to="E2" fromLane="0" toLane="1" /&gt;
+  &lt;!--  E0 →  E3 (left)   --&gt;
+  &lt;connection from="E0" to="E3" fromLane="1" toLane="0" /&gt;
+  &lt;connection from="E0" to="E3" fromLane="1" toLane="1" /&gt;
+&lt;/connections&gt;</div>
+        </div>
+    </div>
+</div>
+</body>
+</html>

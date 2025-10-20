@@ -73,7 +73,7 @@ class Model:
 
         self.allvTypes = None
 
-        self.gui = GUI('real-time-local')
+        self.gui = GUI('real-time-local',self)
 
     def createDatabase(self):
         # if database exist then delete it

@@ -14,6 +14,7 @@ from common.observation import Observation
 from common.vehicle import Behaviour, control_Vehicle
 from predictor.abstract_predictor import Prediction
 
+from trafficManager.decision_maker import TSRL_decision_maker
 from utils.roadgraph import RoadGraph
 from utils.trajectory import State
 
@@ -28,13 +29,13 @@ class SingleStepDecision:
 
 @dataclass
 class EgoDecision:
-    ego_veh: Vehicle
+    ego_veh: control_Vehicle
     result: List[SingleStepDecision] = field(default_factory=list)
 
 
 @dataclass
 class MultiDecision:
-    results: Dict[Vehicle, List[SingleStepDecision]] = field(default_factory=dict)
+    results: Dict[control_Vehicle, List[SingleStepDecision]] = field(default_factory=dict)
 
 
 class AbstractEgoDecisionMaker(ABC):

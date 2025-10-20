@@ -4,11 +4,11 @@
 <configuration xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/netconvertConfiguration.xsd">
 
     <input>
-        <sumo-net-file value="D:\Analysis and Inference-1\Analysis and Inference\LimSim-2025.8\LimSim\networkFiles\Ramp_Merging_and_Exiting\Ramp_Merging_and_Exiting.net.xml"/>
+        <sumo-net-file value="E:\Analysis and Inference\Analysis and Inference\Autonomous Transportation Semantic Interaction Simulation Platform-2025.10\ATSISP\networkFiles\Ramp_Merging_and_Exiting\Ramp_Merging_and_Exiting.net.xml"/>
     </input>
 
     <output>
-        <output-file value="D:\Analysis and Inference-1\Analysis and Inference\LimSim-2025.8\LimSim\networkFiles\Ramp_Merging_and_Exiting\Ramp_Merging_and_Exiting.net.xml"/>
+        <output-file value="E:\Analysis and Inference\Analysis and Inference\Autonomous Transportation Semantic Interaction Simulation Platform-2025.10\ATSISP\networkFiles\Ramp_Merging_and_Exiting\Ramp_Merging_and_Exiting.net.xml"/>
     </output>
 
     <processing>

@@ -1,7 +1,6 @@
 """
 This module contains the Vehicle class and related functions for managing vehicles in a traffic simulation.
 翻译：
-<<<<<<< HEAD
 这个模块包含Vehicle类和相关函数，用于智能管理交通模拟中的车辆
 注意和simModel.carFactory.Vehicle的区别
 control_Vehicle类：
@@ -11,9 +10,6 @@ control_Vehicle类：
     - Frenet坐标系 ：支持Frenet坐标系下的车辆状态表示
     - 通信功能 ：集成车辆间通信能力（V2V）
 
-=======
-这个模块包含Vehicle类和相关函数，用于管理交通模拟中的车辆。
->>>>>>> bbb971f28e433052bc1b806df5c1787bbc26e350
 Classes:
     Behaviour (IntEnum): Enum class for vehicle behavior.
     Vehicle: Represents a vehicle in the simulation.
@@ -35,7 +31,7 @@ from trafficManager.common.coord_conversion import cartesian_to_frenet2D
 from utils.roadgraph import AbstractLane, JunctionLane, NormalLane, RoadGraph
 from utils.trajectory import State
 
-from trafficManager.common.vehicle_communication import CommunicationManager,VehicleCommunicator
+from TSRL_interaction.vehicle_communication import CommunicationManager,VehicleCommunicator
 
 import logger
 
@@ -238,7 +234,7 @@ class control_Vehicle():
             f"In available_lanes? {current_lane.id in self.available_lanes}")
         # 7.19：添加车辆位置信息日志
         logging.info(f"Vehicle {self.id} position: x={self.current_state.x}, y={self.current_state.y}, lane_id={self.lane_id}")
-        # 使用输入指令控制ego车辆
+        # 使用输入指令控制ego车辆（键盘输入左右方向or ad键实现变道）
         self.update_behavior_with_manual_input(manual_input, current_lane)
         # 8.4 如果车辆在stop_lane上且未到达停车位置
         if self.lane_id == self.stop_lane and self.current_state.s < self.stop_pos:
@@ -266,7 +262,7 @@ class control_Vehicle():
                 self.behaviour = Behaviour.KL
                         
             # 如果当前车道不在可用车道中，或者前车处于停止状态，则需要进行变道   
-            elif current_lane.id not in self.available_lanes or self.front_vehicle_status == Behaviour.STOP:  
+            elif current_lane.id not in self.available_lanes:  
                 logging.debug(
                     f"Vehicle {self.id} need lane-change, "
                     f"since {self.lane_id} not in available_lanes {self.available_lanes}"
@@ -365,6 +361,16 @@ def create_vehicle(vehicle_info: Dict, roadgraph: RoadGraph, vtype_info: Any,
     Returns:
         Vehicle: A new Vehicle instance.
     """
+    # 10.20 添加对各种Q列表的空值检查，避免索引越界
+    if not vehicle_info.get("laneIDQ") or not vehicle_info.get("lanePosQ") or not vehicle_info.get("xQ") or not vehicle_info.get("yQ") or not vehicle_info.get("yawQ") or not vehicle_info.get("speedQ"):
+        logging.error(f"Vehicle info missing required data: {vehicle_info}")
+        return None
+    
+    # 添加对列表长度的检查，确保列表不为空
+    if len(vehicle_info["laneIDQ"]) == 0 or len(vehicle_info["lanePosQ"]) == 0 or len(vehicle_info["xQ"]) == 0 or len(vehicle_info["yQ"]) == 0 or len(vehicle_info["yawQ"]) == 0 or len(vehicle_info["speedQ"]) == 0:
+        logging.error(f"Vehicle info lists are empty: {vehicle_info}")
+        return None
+    
     available_lanes = vehicle_info["availableLanes"]
     lane_id = vehicle_info["laneIDQ"][-1]
     lane_pos = vehicle_info["lanePosQ"][-1]
@@ -473,6 +479,16 @@ def create_vehicle_lastseen(vehicle_info: Dict, lastseen_vehicle: control_Vehicl
     Returns:
         Vehicle: A new Vehicle instance with updated information.
     """
+    # 添加对各种Q列表的空值检查，避免索引越界
+    if not vehicle_info.get("laneIDQ") or not vehicle_info.get("xQ") or not vehicle_info.get("yQ"):
+        logging.error(f"Vehicle info missing required data for lastseen vehicle: {vehicle_info}")
+        return None
+        
+    # 添加对列表长度的检查，确保列表不为空
+    if len(vehicle_info["laneIDQ"]) == 0 or len(vehicle_info["xQ"]) == 0 or len(vehicle_info["yQ"]) == 0:
+        logging.error(f"Vehicle info lists are empty for lastseen vehicle: {vehicle_info}")
+        return None
+        
     vehicle = copy(lastseen_vehicle) # 复制lastseen_vehicle
     vehicle.current_state = last_state
     vehicle.current_state.t = T
@@ -482,14 +498,18 @@ def create_vehicle_lastseen(vehicle_info: Dict, lastseen_vehicle: control_Vehicl
     vehicle.available_lanes = vehicle_info["availableLanes"]
     # 8.3 添加停车信息传递
     if vehicle_info["stop_info"]:
-        vehicle.stop_lane = vehicle_info["stop_info"][0]['lane']
-        vehicle.stop_pos = vehicle_info["stop_info"][0]['end_pos']
-        vehicle.stop_until= vehicle_info["stop_info"][0]['until']
+        # 添加对stop_info列表的边界检查
+        if len(vehicle_info["stop_info"]) > 0:
+            vehicle.stop_lane = vehicle_info["stop_info"][0]['lane']
+            vehicle.stop_pos = vehicle_info["stop_info"][0]['end_pos']
+            vehicle.stop_until= vehicle_info["stop_info"][0]['until']
 
     lane_id = vehicle_info["laneIDQ"][-1]
     # in some junctions, sumo will not find any lane_id for the vehicle
     while lane_id == "":
         logging.debug("lane_id is empty")
+        if not vehicle_info["laneIDQ"]:  # 检查列表是否为空
+            break
         lane_id = vehicle_info["laneIDQ"].pop()
         if lane_id != "":
             lane_id = roadgraph.get_available_next_lane(
@@ -505,6 +525,10 @@ def create_vehicle_lastseen(vehicle_info: Dict, lastseen_vehicle: control_Vehicl
                             f"lane from {vehicle.lane_id} to {lane_id}")
             vehicle.behaviour = Behaviour.KL
 
+        if not vehicle_info.get("lanePosQ"):  # 检查lanePosQ是否存在且非空
+            logging.error(f"Vehicle info missing lanePosQ for lastseen vehicle: {vehicle_info}")
+            return vehicle
+            
         lanepos = vehicle_info["lanePosQ"][-1]
         vehicle.lane_id = lane_id
         lane = roadgraph.get_lane_by_id(lane_id)
@@ -525,10 +549,20 @@ def create_vehicle_lastseen(vehicle_info: Dict, lastseen_vehicle: control_Vehicl
 
 
 def get_lane_id(vehicle_info, roadgraph):
+    if not vehicle_info.get("laneIDQ") or len(vehicle_info["laneIDQ"]) == 0:
+        logging.error(f"Vehicle info missing laneIDQ data: {vehicle_info}")
+        return None
+        
     lane_id = vehicle_info["laneIDQ"].pop()
+    # 添加对laneIDQ列表的额外检查，确保列表不为空
+    if len(vehicle_info["laneIDQ"]) == 0 and lane_id == "":
+        logging.error(f"Vehicle info laneIDQ list is empty and lane_id is empty: {vehicle_info}")
+        return None
     # in some junctions, sumo will not find any lane_id for the vehicle
     while lane_id == "":
         logging.debug("lane_id is empty")
+        if not vehicle_info["laneIDQ"]:  # 检查列表是否为空
+            break
         lane_id = vehicle_info["laneIDQ"].pop()
         if lane_id != "":
             lane_id = roadgraph.get_available_next_lane(

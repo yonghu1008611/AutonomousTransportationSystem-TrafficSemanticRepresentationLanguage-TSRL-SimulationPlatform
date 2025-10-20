@@ -1,0 +1,10 @@
+lxml
+rtree
+pandas
+matplotlib
+pulp
+pyproj
+ezdxf
+scipy
+fmpy
+ortools

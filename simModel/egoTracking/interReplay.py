@@ -25,13 +25,15 @@ class InterReplayModel:
                  dataBase: str,
                  dataBase2: str = None,
                  startFrame: int = None,
-                 simNote: str = ''
+                 simNote: str = '',
+                 communication: bool = False, # 25.9.9 新增参数，全局通信管理器
                  ) -> None:
         print('[green bold]Model initialized at {}.[/green bold]'.format(
             datetime.now().strftime('%H:%M:%S.%f')[:-3]
         ))
         self.sim_mode: str = 'InterReplay'
         self.dataBase = dataBase
+        self.communication = communication
         conn = sqlite3.connect(self.dataBase) # 与数据库相连接
         cur = conn.cursor()
 
@@ -98,10 +100,10 @@ class InterReplayModel:
 
         self.evaluation = RealTimeEvaluation(dt=0.1)
 
-        self.gui = GUI('real-time-ego')
+        self.gui = GUI('real-time-ego',self)
         self.gui.start()
         self.drawMapBG()
-        self.drawRadarBG()
+        # self.drawRadarBG()
         self.frameIncre = 0
 
         self.allvTypes = {}
@@ -322,7 +324,7 @@ class InterReplayModel:
         return veh
 
     def isInvolved(self, veh: Vehicle, currVehs: dict[str, Vehicle]) -> bool:
-        # if the vehicle's dbTrajectory is too short, limsim will take over it
+        # if the vehicle's dbTrajectory is too short, ATSISP will take over it
         # until the vehicle drive out of the AoI, avoiding the vhicles's suddenly fading.
         if len(veh.dbTrajectory.states) <= 10:
             return True

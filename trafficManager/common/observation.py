@@ -33,3 +33,4 @@ class Observation:
         self.vehicles: List[control_Vehicle] = vehicles if vehicles is not None else []
         self.history_track: Dict[int,List[State]] = history_track if history_track is not None else {}
         self.obstacles: List[StaticObstacle] = static_obstacles if static_obstacles is not None else []
+        

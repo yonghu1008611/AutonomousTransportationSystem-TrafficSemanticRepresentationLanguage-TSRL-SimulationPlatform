@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<connections xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/connections_file.xsd">
+
+  <!-- -E2 →  E3 (right)  -->
+  <connection from="-E2" to="E3" fromLane="0" toLane="0" />
+  <connection from="-E2" to="E3" fromLane="0" toLane="1" />
+  <!-- -E2 → -E0 (straight) -->
+  <connection from="-E2" to="-E0" fromLane="0" toLane="0" />
+  <connection from="-E2" to="-E0" fromLane="0" toLane="1" />
+  <!-- -E2 →  E4 (left)   -->
+  <connection from="-E2" to="E4" fromLane="1" toLane="0" />
+  <connection from="-E2" to="E4" fromLane="1" toLane="1" />
+
+  <!-- -E3 → -E0 (right)  -->
+  <connection from="-E3" to="-E0" fromLane="0" toLane="0" />
+  <connection from="-E3" to="-E0" fromLane="0" toLane="1" />
+  <!-- -E3 →  E4 (straight)-->
+  <connection from="-E3" to="E4" fromLane="0" toLane="0" />
+  <connection from="-E3" to="E4" fromLane="0" toLane="1" />
+  <!-- -E3 →  E2 (left)   -->
+  <connection from="-E3" to="E2" fromLane="1" toLane="0" />
+  <connection from="-E3" to="E2" fromLane="1" toLane="1" />
+
+  <!-- -E4 →  E2 (right)  -->
+  <connection from="-E4" to="E2" fromLane="0" toLane="0" />
+  <connection from="-E4" to="E2" fromLane="0" toLane="1" />
+  <!-- -E4 →  E3 (straight)-->
+  <connection from="-E4" to="E3" fromLane="0" toLane="0" />
+  <connection from="-E4" to="E3" fromLane="0" toLane="1" />
+  <!-- -E4 → -E0 (left)   -->
+  <connection from="-E4" to="-E0" fromLane="1" toLane="0" />
+  <connection from="-E4" to="-E0" fromLane="1" toLane="1" />
+
+  <!--  E0 →  E4 (right)  -->
+  <connection from="E0" to="E4" fromLane="0" toLane="0" />
+  <connection from="E0" to="E4" fromLane="0" toLane="1" />
+  <!--  E0 →  E2 (straight)-->
+  <connection from="E0" to="E2" fromLane="0" toLane="0" />
+  <connection from="E0" to="E2" fromLane="0" toLane="1" />
+  <!--  E0 →  E3 (left)   -->
+  <connection from="E0" to="E3" fromLane="1" toLane="0" />
+  <connection from="E0" to="E3" fromLane="1" toLane="1" />
+</connections>

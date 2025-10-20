@@ -1,0 +1,3 @@
+EmergencySituation(RV);
+Control(HV):-EmergencyStiation(y);
+Ask Control(x);

@@ -71,6 +71,34 @@ LimSim has a cross-platform user-friendly GUI, including a beautiful simulation 
   <img src="assets/limsim_gui.png" title="" alt="limsim_gui.png">
 </p>
 
+## 🎛️ 场景选择器
+
+为了方便用户快速启动不同的仿真场景，我们提供了两个版本的场景选择器界面。
+
+### 启动场景选择器
+
+#### DearPyGUI版本（需要安装dearpygui）
+```bash
+python scenario_selector.py
+```
+
+#### Tkinter版本（系统自带，推荐）
+```bash
+python tkinter_scenario_selector.py
+```
+
+### 场景选择器功能
+
+场景选择器提供了以下5个场景的快速启动功能：
+
+1. 前向碰撞预警场景
+2. 车辆-RSU交互场景
+3. 人车加速交互场景
+4. 车辆交互场景
+5. 添加其他场景
+
+推荐使用Tkinter版本的场景选择器，因为它不需要额外安装依赖库，兼容性更好。
+
 
 
 <details><summary><h2>🛣️ Multi-scenarios support</h2></summary>

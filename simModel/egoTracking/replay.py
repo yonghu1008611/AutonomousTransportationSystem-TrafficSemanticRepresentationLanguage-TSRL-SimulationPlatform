@@ -81,7 +81,7 @@ class ReplayModel:
 
         self.evaluation = RealTimeEvaluation(dt=0.1)
 
-        self.gui = GUI('replay-ego')
+        self.gui = GUI('replay-ego',self)
         self.gui.start()
         self.drawMapBG()
         self.drawRadarBG()

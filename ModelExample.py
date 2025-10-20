@@ -2,8 +2,16 @@ from simModel.egoTracking.model import Model
 from trafficManager.traffic_manager import TrafficManager
 
 import logger
-
-log = logger.setup_app_level_logger(file_name="app_debug_example.log")
+import os
+# config a logger, set use_stdout=True to output log to terminal
+# 将日志文件保存到DEBUG_TSRL目录
+log_dir = "DEBUG_TSRL"
+if not os.path.exists(log_dir):
+    os.makedirs(log_dir)
+log_file_path = os.path.join(log_dir, "app_debug_example.log")
+log = logger.setup_app_level_logger(file_name=log_file_path,
+                                    level="DEBUG",
+                                    use_stdout=False)
 
 
 file_paths = {
@@ -48,11 +56,14 @@ file_paths = {
 def run_model(
     net_file,
     rou_file,
-    ego_veh_id="61",
-    data_base="egoTrackingTest.db",#???这是啥
+    ego_veh_id="10",
+    data_base="egoTrackingTest.db",
     SUMOGUI="D:\sumo-win64-1.15.0\sumo-1.15.0\bin\sumo-gui.exe",
-    sim_note="example simulation, LimSim-v-0.2.0.",
+    sim_note="example simulation, ATSISP-v-1.0.",
     carla_cosim=False,
+    max_sim_time=100, # 新增参数，单位秒
+    communication = True,# 新增参数，全局通信管理器
+    if_clear_message_file=False # 8.27 新增参数，是否清理消息文件
 ):
     model = Model(
         ego_veh_id,
@@ -62,10 +73,23 @@ def run_model(
         SUMOGUI=SUMOGUI,
         simNote=sim_note,
         carla_cosim=carla_cosim,
+        max_steps=int(max_sim_time * 10), # 将max_sim_time转换为步长
+        communication=communication, # 25.8.16 新增参数，全局通信管理器
     )
     model.start()
     planner = TrafficManager(model)
-
+    # 8.27 新增：清理消息文件or清理消息内容：
+    if if_clear_message_file == True:
+        # 8.19 新增：删除所有消息历史文件
+        planner.communication_manager.cleanup_message_files()
+        # 8.27 新增：删除display_text文件
+        planner.communication_manager.cleanup_display_text(loc="message_history")
+    else:
+        # 8.19 新增：清空所有消息历史文件内容
+        planner.communication_manager.clear_message_files_content()
+        # 8.27 新增：清空display_text文件里的内容
+        planner.communication_manager.clear_display_text_content(loc="message_history")
+    
     while not model.tpEnd:
         model.moveStep()
         if model.timeStep % 5 == 0:
@@ -87,7 +111,7 @@ if __name__ == "__main__":
     log.info("ModelExample Starts")
     try:
         net_file, rou_file = file_paths['CarlaTown05']
-        run_model(net_file, rou_file, ego_veh_id="61", carla_cosim=False)
+        run_model(net_file, rou_file, ego_veh_id="10", carla_cosim=False)
     except Exception as e:
         log.exception("ModelExample Error")
         raise

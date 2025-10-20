@@ -1,0 +1,3 @@
+StationAhead(1);
+Control(LetDecelerate):-StationAhead(x);
+ASK Control(x);

@@ -28,7 +28,7 @@ from utils.simBase import MapCoordTF, vehType
 from evaluation.evaluation import RealTimeEvaluation
 import read_stop_info # 7.20 添加停车解析内容
 
-from trafficManager.common.vehicle_communication import CommunicationManager,VehicleCommunicator
+from TSRL_interaction.vehicle_communication import CommunicationManager,VehicleCommunicator
 
 class Model:
     '''
@@ -108,7 +108,7 @@ class Model:
         self.allvTypes = None
 
         try:
-            self.gui = GUI('real-time-ego')
+            self.gui = GUI('real-time-ego',self)
         except Exception as e:
             # 记录GUI初始化错误
             import logging
@@ -272,7 +272,8 @@ class Model:
         conn.commit()
         cur.close()
         conn.close()
-    # 将模拟描述信息插入数据库
+        
+        
     def simDescriptionCommit(self, simNote: str):
         currTime = datetime.now()
         insertQuery = '''INSERT INTO simINFO VALUES (?, ?, ?, ?, ?, ?, ?, ?);'''
@@ -465,7 +466,12 @@ class Model:
     # 绘制场景
     def drawScene(self):
         ex, ey = self.ego.x, self.ego.y
-        node = dpg.add_draw_node(parent="Canvas") # 创建Canvas的子图节点node，用于组织所有场景绘图
+        # 确保父节点存在且有效
+        if dpg.does_item_exist("Canvas"):
+            node = dpg.add_draw_node(parent="Canvas") # 创建Canvas的子图节点node，用于组织所有场景绘图
+        else:
+            print("Warning: Canvas parent node does not exist")
+            return
         self.ms.plotScene(node, ex, ey, self.gui.ctf) # 绘制道路背景与静态元素
         self.ego.plotSelf('ego', node, ex, ey, self.gui.ctf) # 绘制自车模型（矩形+方向箭头）
         self.ego.plotdeArea(node, ex, ey, self.gui.ctf) # 绘制自车检测区域（蓝色半透明圆形）
@@ -482,36 +488,38 @@ class Model:
                 v2.plotTrajectory(node, ex, ey, self.gui.ctf)
                 self.putFrameInfo(v2.id, 'outOfAoI', v2)
         # 绘制宏观地图动态元素（movingScene节点）中的AOI-ego橙色半透明圆形
-        mvNode = dpg.add_draw_node(parent='movingScene') 
-        mvCenterx, mvCentery = self.mapCoordTF.dpgCoord(ex, ey) 
-        dpg.draw_circle((mvCenterx, mvCentery),
-                        self.ego.deArea * self.mapCoordTF.zoomScale,
-                        thickness=0,
-                        fill=(243, 156, 18, 60),
-                        parent=mvNode) # 橙色半透明节点
+        if dpg.does_item_exist('movingScene'):
+            mvNode = dpg.add_draw_node(parent='movingScene') 
+            mvCenterx, mvCentery = self.mapCoordTF.dpgCoord(ex, ey) 
+            dpg.draw_circle((mvCenterx, mvCentery),
+                            self.ego.deArea * self.mapCoordTF.zoomScale,
+                            thickness=0,
+                            fill=(243, 156, 18, 60),
+                            parent=mvNode) # 橙色半透明节点
         # 左下角的仿真信息文本（simInfo）
-        infoNode = dpg.add_draw_node(parent='simInfo') 
-        # 在infoNode节点上进行文本写作
-        dpg.draw_text((5, 5),
-                      'Real time simulation ego tracking.',
-                      color=(75, 207, 250),
-                      size=20,
-                      parent=infoNode) # 绘制模拟信息
-        dpg.draw_text((5, 25),
-                      'Time step: %.2f s.' % (self.timeStep / 10),
-                      color=(85, 230, 193),
-                      size=20,
-                      parent=infoNode)
-        dpg.draw_text((5, 45),
-                      'Current lane: %s' % self.ego.laneID,
-                      color=(249, 202, 36),
-                      size=20,
-                      parent=infoNode)
-        dpg.draw_text((5, 65),
-                      'Lane position: %.5f' % self.ego.lanePos,
-                      color=(249, 202, 36),
-                      size=20,
-                      parent=infoNode)
+        if dpg.does_item_exist('simInfo'):
+            infoNode = dpg.add_draw_node(parent='simInfo') 
+            # 在infoNode节点上进行文本写作
+            dpg.draw_text((5, 5),
+                          'Real time simulation ego tracking.',
+                          color=(75, 207, 250),
+                          size=20,
+                          parent=infoNode) # 绘制模拟信息
+            dpg.draw_text((5, 25),
+                          'Time step: %.2f s.' % (self.timeStep / 10),
+                          color=(85, 230, 193),
+                          size=20,
+                          parent=infoNode)
+            dpg.draw_text((5, 45),
+                          'Current lane: %s' % self.ego.laneID,
+                          color=(249, 202, 36),
+                          size=20,
+                          parent=infoNode)
+            dpg.draw_text((5, 65),
+                          'Lane position: %.5f' % self.ego.lanePos,
+                          color=(249, 202, 36),
+                          size=20,
+                          parent=infoNode)
 
         """
         # 评估窗口雷达图（sEvaluation窗口）
@@ -520,33 +528,35 @@ class Model:
         transformed_points = self._evaluation_transform_coordinate(points,
                                                                    scale=30) # 转换坐标，将评估指标转换为绘图坐标
         transformed_points.append(transformed_points[0]) # 雷达图绘制需要闭合，添加第一个点以闭合图形
-        radarNode = dpg.add_draw_node(parent='radarPlot') # 创建雷达图，节点类别为radarNode，为已有节点类别radarPlot的子类
-        dpg.draw_polygon(transformed_points,
-                         color=(75, 207, 250, 100), # 雷达图轮廓颜色
-                         fill=(75, 207, 250, 100), # 雷达图填充颜色
-                         thickness=5, # 雷达图轮廓宽度
-                         parent=radarNode) # 在radarNode上进行绘画
+        if dpg.does_item_exist('radarPlot'):
+            radarNode = dpg.add_draw_node(parent='radarPlot') # 创建雷达图，节点类别为radarNode，为已有节点类别radarPlot的子类
+            dpg.draw_polygon(transformed_points,
+                             color=(75, 207, 250, 100), # 雷达图轮廓颜色
+                             fill=(75, 207, 250, 100), # 雷达图填充颜色
+                             thickness=5, # 雷达图轮廓宽度
+                             parent=radarNode) # 在radarNode上进行绘画
         """
         # 8.27 新增TSIL展示窗口，以及TSIL文本读取和展示功能
-        TSILNode = dpg.add_draw_node(parent='TSILs') 
-        # 读取display_text.txt文件内容
-        display_text_path = os.path.join(os.path.dirname(__file__), '..', '..', 'message_history/display_text.txt')
-        try:
-            with open(display_text_path, 'r', encoding='utf-8') as f:
-                display_content = f.read().strip()
-                if not display_content:
-                    display_content = 'No display text available'
-        except Exception as e:
-            display_content = f'Error reading display_text.txt: {str(e)}'
-        # 将文本按行分割并显示
-        lines = display_content.split('\n')
-        y_offset = 5
-        for i, line in enumerate(lines[:10]):  # 限制显示前10行
-            dpg.draw_text((5, y_offset + i * 25),
-                line,
-                color=(75, 207, 250),
-                size=20,
-                parent=TSILNode) # 绘制模拟信息
+        if dpg.does_item_exist('TSILs'):
+            TSILNode = dpg.add_draw_node(parent='TSILs') 
+            # 读取display_text.txt文件内容
+            display_text_path = os.path.join(os.path.dirname(__file__), '..', '..', 'message_history/display_text.txt')
+            try:
+                with open(display_text_path, 'r', encoding='utf-8') as f:
+                    display_content = f.read().strip()
+                    if not display_content:
+                        display_content = 'No display text available'
+            except Exception as e:
+                display_content = f'Error reading display_text.txt: {str(e)}'
+            # 将文本按行分割并显示
+            lines = display_content.split('\n')
+            y_offset = 5
+            for i, line in enumerate(lines[:10]):  # 限制显示前10行
+                dpg.draw_text((5, y_offset + i * 25),
+                    line,
+                    color=(75, 207, 250),
+                    size=20,
+                    parent=TSILNode) # 绘制模拟信息
         # dpg.draw_text((5, 5),
         #     'test TSIL infomation',
         #         color=(75, 207, 250),
@@ -673,7 +683,7 @@ class Model:
                     self.getVehInfo(v) # 获取场景内周边车辆的信息
 
             self.update_evluation_data()
-            self.drawScene() # 绘制LimSim场景
+            self.drawScene() # 绘制ATPSIP场景
             self.plotVState() # 绘制车辆状态曲线
         else:
             if self.tpStart:
@@ -751,9 +761,8 @@ class Model:
     
     def render(self):
         self.gui.update_inertial_zoom() # 更新 inertial zoom（未知）
-        self.getSce() # 获取LimSim场景
+        self.getSce() # 获取ATPSIP场景
         dpg.render_dearpygui_frame() # 渲染dearpygui框架
-
 
     def moveStep(self):
         if self.gui.is_running and self.timeStep < self.max_steps:
@@ -764,11 +773,6 @@ class Model:
             # 只在必要时更新车辆列表
             if not self.vehicles or self.timeStep % 10 == 0:
                 self.vehicles=self.getVehicleList()
-            if self.vehicles:
-                # 7.20 分配停车信息
-                read_stop_info.assign_stops_to_vehicles(self.vehicles_with_stops,self.vehicles)
-                # 7.21 验证并应用停车信息
-                read_stop_info.validate_and_apply_stops(self.vehicles)
         elif self.timeStep >= self.max_steps: # 如果模拟步长达到最大步长
             self.tpEnd = 1 # 设置模拟结束标志
         if not dpg.is_dearpygui_running(): # 如果dearpygui未运行

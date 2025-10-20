@@ -1,0 +1,1 @@
+ChangeLane(y):-SelfVehicle(y),EmergencyStation(x); 
