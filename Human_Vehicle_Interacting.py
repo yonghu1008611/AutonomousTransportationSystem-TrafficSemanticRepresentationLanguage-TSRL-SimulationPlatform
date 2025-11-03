@@ -29,12 +29,13 @@ if not os.path.exists(log_dir):
     os.makedirs(log_dir)
 log_file_path = os.path.join(log_dir, "app_debug_HV.log")
 log = logger.setup_app_level_logger(file_name=log_file_path)
+Scenario_Name = "Human_Vehicle_Interacting"
 
 file_paths = {
-    "Vehicle_RSU_Interacting": (
-        "networkFiles/Vehicle_RSU_Interacting/Vehicle_RSU_Interacting.net.xml",
-        "networkFiles/Vehicle_RSU_Interacting/Vehicle_RSU_Interacting.rou.xml",
-        "networkFiles/Vehicle_RSU_Interacting/Vehicle_RSU_Interacting.add.xml"
+    "Human_Vehicle_Interacting": (
+        "networkFiles/Human_Vehicle_Interacting/Human_Vehicle_Interacting.net.xml",
+        "networkFiles/Human_Vehicle_Interacting/Human_Vehicle_Interacting.rou.xml",
+        "networkFiles/Human_Vehicle_Interacting/Human_Vehicle_Interacting.add.xml"
     )
 }
 
@@ -43,15 +44,15 @@ def run_model(
     rou_file,
     add_file,
     ego_veh_id="AV_0",
-    data_base='Vehicle_RSU_Interacting.db',
+    data_base='Human_Vehicle_Interacting.db',
     SUMOGUI="D:\\sumo-win64-1.15.0\\sumo-1.15.0\\bin\\sumo-gui.exe",
-    sim_note="Vehicle-RSU interaction simulation, ATSISP-v-1.0.",
+    sim_note="Human-Vehicle interaction simulation, ATSISP-v-1.0.", 
     carla_cosim=False,
     max_sim_time=200,  # 单位秒
     communication=True,  # 全局通信管理器
     if_clear_message_file=False  # 是否清理消息文件
 ):
-    """运行车辆与RSU交互模拟"""
+    """运行人车交互模拟"""
     try:
         model = Model(
             ego_veh_id,
@@ -68,16 +69,7 @@ def run_model(
         model.start() # 初始化
         planner = TrafficManager(model) # 初始化车辆规划模块
         # 清理消息文件or清理消息内容：
-        if if_clear_message_file == True:
-            # 删除所有消息历史文件
-            planner.communication_manager.cleanup_message_files()
-            # 删除display_text文件
-            planner.communication_manager.cleanup_display_text(loc="message_history")
-        else:
-            # 清空所有消息历史文件内容
-            planner.communication_manager.clear_message_files_content()
-            # 清空display_text文件里的内容
-            planner.communication_manager.clear_display_text_content(loc="message_history")
+        model.clear_message_files(planner, if_clear_message_file)
 
         # 主循环
         # 当自车未到达终点时，继续模拟
@@ -85,6 +77,8 @@ def run_model(
             try:
                 model.moveStep()
                 if model.timeStep % 5 == 0:
+                    # 显示场景信息
+                    planner.communication_manager.show_display_text(Scenario_Name)
                     # 导出场景 
                     #  7.27 打印exportSce()得到的vehicles中的stop_info
                     roadgraph, vehicles = model.exportSce() 
@@ -113,17 +107,17 @@ def run_model(
 
 if __name__ == "__main__":
     try:
-        net_file, rou_file,add_file = file_paths['Vehicle_RSU_Interacting']
+        net_file, rou_file,add_file = file_paths['Human_Vehicle_Interacting']
         print("net_file:\n", net_file, "\nrou_file:\n", rou_file,"\nadd_file:\n", add_file)
         
         # 使用相对于当前文件的路径创建日志和相关文件
         current_dir = os.path.dirname(os.path.abspath(__file__))
         log_dir = os.path.join(current_dir, "logs")
-        vrsu_dir = os.path.join(current_dir, "Vehicle_RSU_Interacting_output")
+        hv_dir = os.path.join(current_dir, "Human_Vehicle_Interacting_output")
         
         # 确保必要的目录存在
         os.makedirs(log_dir, exist_ok=True)
-        os.makedirs(vrsu_dir, exist_ok=True)
+        os.makedirs(hv_dir, exist_ok=True)
         
         # 运行模型
         run_model(

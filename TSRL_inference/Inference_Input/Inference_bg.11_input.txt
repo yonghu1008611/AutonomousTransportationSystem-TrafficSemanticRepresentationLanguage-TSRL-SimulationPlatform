@@ -1,0 +1,14 @@
+InformationRequest2RSU(AV_0,RSU_1);
+CheckChangeLane(AV_0)
+LeftChangeLaneSafe(AV_0)
+LeftChangeLane(AV_0);
+LeftChangeLane(AV_0);
+LeftChangeLane(AV_0);
+LeftChangeLane(AV_0);
+LeftChangeLane(AV_0);
+CheckChangeLane(AV_0)
+LeftChangeLaneSafe(AV_0)
+
+LeftChangeLane(x):-CheckChangeLane(x),LeftChangeLaneSafe(x);
+
+ASK LeftChangeLane(x)

@@ -4,6 +4,10 @@
 ver:1.0
 '''
 import sys
+import os
+# 添加当前目录到Python路径
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
 from Tokentype import *
 
 hadError = False  #错误标志

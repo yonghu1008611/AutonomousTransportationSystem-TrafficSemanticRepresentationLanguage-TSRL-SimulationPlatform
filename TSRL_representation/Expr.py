@@ -4,6 +4,11 @@
 ver:1.0
 """
 #Expr AST nodes.
+import sys
+import os
+# 添加当前目录到Python路径
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
 from typing import Any, List
 from Tokentype import Token, TokenType
 from abc import ABC, abstractmethod

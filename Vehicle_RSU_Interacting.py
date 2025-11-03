@@ -28,7 +28,7 @@ if not os.path.exists(log_dir):
     os.makedirs(log_dir)
 log_file_path = os.path.join(log_dir, "app_debug_VRSU.log")
 log = logger.setup_app_level_logger(file_name=log_file_path)
-
+Scenario_Name = "Vehicle_RSU_Interacting"
 file_paths = {
     "Vehicle_RSU_Interacting": (
         "networkFiles/Vehicle_RSU_Interacting/Vehicle_RSU_Interacting.net.xml",
@@ -48,7 +48,7 @@ def run_model(
     carla_cosim=False,
     max_sim_time=200,  # 单位秒
     communication=True,  # 全局通信管理器
-    if_clear_message_file=False  # 是否清理消息文件
+    if_clear_message_file=False  # 是否清理消息文件本体
 ):
     """运行车辆与RSU交互模拟"""
     try:
@@ -63,36 +63,43 @@ def run_model(
             carla_cosim=carla_cosim,
             max_steps=int(max_sim_time * 10), # 将max_sim_time转换为步长
             communication=communication, # 全局通信管理器
+            Scenario_Name=Scenario_Name, # 场景名称
         )
         model.start() # 初始化
         planner = TrafficManager(model) # 初始化车辆规划模块
         # 清理消息文件or清理消息内容：
-        if if_clear_message_file == True:
-            # 删除所有消息历史文件
-            planner.communication_manager.cleanup_message_files()
-            # 删除display_text文件
-            planner.communication_manager.cleanup_display_text(loc="message_history")
-        else:
-            # 清空所有消息历史文件内容
-            planner.communication_manager.clear_message_files_content()
-            # 清空display_text文件里的内容
-            planner.communication_manager.clear_display_text_content(loc="message_history")
-
+        model.clear_message_files(planner, if_clear_message_file)
         # 主循环
         # 当自车未到达终点时，继续模拟
         while not model.tpEnd:
             try:
                 model.moveStep()
                 if model.timeStep % 5 == 0:
-                    # 导出场景 
-                    #  7.27 打印exportSce()得到的vehicles中的stop_info
-                    roadgraph, vehicles, facilities = model.exportSce()
+                    # 展示 display_text.txt 文件内容
+                    planner.communication_manager.show_display_text(Scenario_Name)
+                    #导出场景 7.27 打印exportSce()得到的vehicles中的stop_info
+                    export_result = model.exportSce()
+                    # 确保返回值数量正确
+                    if len(export_result) == 3:
+                        roadgraph, vehicles, facilities = export_result
+                    elif len(export_result) == 2:
+                        roadgraph, vehicles = export_result
+                        facilities = {}  # 如果没有facilities，创建一个空字典
+                    else:
+                        # 处理其他情况
+                        continue
+                    
                     # 如果自车开始行驶且场景存在
                     if model.tpStart and roadgraph:
                         log.info(f"Frame {model.timeStep}: Calling planner.plan with {len(vehicles)} vehicles and {len(facilities)} facilities")
-                        trajectories = planner.plan(
-                        model.timeStep * 0.1, roadgraph, vehicles, facilities
-                        )# 规划轨迹
+                        if len(export_result) == 3:
+                            trajectories = planner.plan(
+                            model.timeStep * 0.1, roadgraph, vehicles, facilities
+                            )# 规划轨迹
+                        else:
+                            trajectories = planner.plan(
+                            model.timeStep * 0.1, roadgraph, vehicles
+                            )# 规划轨迹
                         log.info(f"Frame {model.timeStep}: Completed planner.plan")
                         model.setTrajectories(trajectories) # 设置轨迹
                     else:

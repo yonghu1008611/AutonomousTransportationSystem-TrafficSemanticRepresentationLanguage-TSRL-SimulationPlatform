@@ -31,7 +31,7 @@ from trafficManager.common.coord_conversion import cartesian_to_frenet2D
 from utils.roadgraph import AbstractLane, JunctionLane, NormalLane, RoadGraph
 from utils.trajectory import State
 
-from TSRL_interaction.vehicle_communication import CommunicationManager,VehicleCommunicator
+from TSRL_interaction.vehicle_communication import CommunicationManager, Performative, VehicleCommunicator
 
 import logger
 
@@ -118,10 +118,7 @@ class control_Vehicle():
         self.if_traffic_communication = if_traffic_communication
         if if_traffic_communication:
             self.communication_manager=communication_manager
-            self.communicator = VehicleCommunicator(self.id, self.communication_manager, if_ego)
-
-
-
+            self.communicator = VehicleCommunicator(self.id, self, self.communication_manager, if_ego)
     @property
     def current_state(self) -> State:
         """
@@ -149,7 +146,7 @@ class control_Vehicle():
         self.if_egoCar=if_egoCar
         self.communication_manager = communication_manager
         # 根据车辆ID类型初始化对应通信器
-        self.communicator = VehicleCommunicator(self.id, self.communication_manager,self.if_egoCar) # 初始化RV通信器
+        self.communicator = VehicleCommunicator(self.id, self, self.communication_manager, self.if_egoCar) # 初始化RV通信器
         self.communicator.vehicle = self
     
     # 获取车辆在车道上的状态
@@ -274,6 +271,8 @@ class control_Vehicle():
                     while lane.left_lane() is not None:
                         lane_id = lane.left_lane()
                         if lane_id in self.available_lanes:
+                            # 当前条件可以进行左变道
+                            self.communicator.send(f"LeftChangeLaneSafe({self.id})",Performative=Performative.Inform)
                             self.behaviour = Behaviour.LCL
                             logging.info(
                                 f"Vehicle {self.id} choose to change Left lane")
@@ -285,6 +284,8 @@ class control_Vehicle():
                     while lane.right_lane() is not None:
                         lane_id = lane.right_lane()
                         if lane_id in self.available_lanes:
+                            # 当前条件可以进行右变道
+                            self.communicator.send(f"RightChangeLaneSafe({self.id})",Performative=Performative.Inform)
                             self.behaviour = Behaviour.LCR
                             logging.info(
                                 f"Vehicle {self.id} choose to change Right lane"
@@ -328,17 +329,32 @@ class control_Vehicle():
         """设置车辆停车信息"""
         self.stop_info = stops
 
-    # # 8.16 继承父类方法：初始化车辆通信器
-    # def init_communication(self, communication_manager: CommunicationManager):
-    #     """初始化车辆通信器"""
-    #     # 根据车辆类型初始化对应通信器
-    #     if self.vtype == VehicleType.EGO:
-    #         from simModel.common.vehicle_communication import HvCommunicator
-    #         self.communicator = HvCommunicator(str(self.id), communication_manager)
-    #     else:
-    #         self.communicator = RvCommunicator(str(self.id), communication_manager)
-    #     self.communicator.vehicle = self
-
+    def selfcheck(self, decision_output, roadgraph: RoadGraph):
+        """自车进行条件检查行为"""
+        # 1. 检查变道是否合法
+        if decision_output.startswith("CheckChangeLane"):
+            lane = roadgraph.get_lane_by_id(self.lane_id)
+            while lane.left_lane() is not None:
+                lane_id = lane.left_lane()
+                if lane_id in self.available_lanes:
+                    # 当前条件可以进行左变道
+                    self.communicator.send(f"LeftChangeLaneSafe({self.id});",performative=Performative.Inform)
+                    self.behaviour = Behaviour.LCL
+                    logging.info(
+                        f"Vehicle {self.id} choose to change Left lane")
+                    break
+                lane = roadgraph.get_lane_by_id(lane_id)
+            while lane.right_lane() is not None:
+                lane_id = lane.right_lane()
+                if lane_id in self.available_lanes:
+                    # 当前条件可以进行右变道
+                    self.communicator.send(f"RightChangeLaneSafe({self.id});",performative=Performative.Inform)
+                    self.behaviour = Behaviour.LCR
+                    logging.info(
+                        f"Vehicle {self.id} choose to change Right lane")
+                    break
+                lane = roadgraph.get_lane_by_id(lane_id)
+           
 
 def create_vehicle(vehicle_info: Dict, roadgraph: RoadGraph, vtype_info: Any,
                    T,
@@ -572,8 +588,6 @@ def get_lane_id(vehicle_info, roadgraph):
 
 # 8.12：判断车辆前车状态
 def get_pre_vehicle_status(vehicle: control_Vehicle, vehicles: Dict[int,control_Vehicle]) -> Behaviour:
-
-
     """
     Get the status of the pre vehicle.
     中文翻译：

@@ -1,0 +1,24 @@
+Send by HV AV_0:SelfVehicle(AV_0);
+Send by HV AV_0:InformationRequest2RSU(AV_0,RSU_1);
+Received by RV bg.13:InformationRequest2RSU(AV_0,RSU_1);
+Received by RV bg.12:InformationRequest2RSU(AV_0,RSU_1);
+Received by RV bg.11:InformationRequest2RSU(AV_0,RSU_1);
+Received by RV bg.14:InformationRequest2RSU(AV_0,RSU_1);
+Received by RV bg.15:InformationRequest2RSU(AV_0,RSU_1);
+Received by RSU RSU_1:InformationRequest2RSU(AV_0,RSU_1);
+Send by RSU RSU_1:getVehicleID(bg.13);
+VehicleInLane(AV_0,bg.13,Front);
+GreaterSpeed(AV_0,bg.13);
+
+getVehicleID(bg.12);
+VehicleInLane(AV_0,bg.12,Front);
+GreaterSpeed(AV_0,bg.12);
+
+Received by HV AV_0:getVehicleID(bg.13);
+VehicleInLane(AV_0,bg.13,Front);
+GreaterSpeed(AV_0,bg.13);
+
+getVehicleID(bg.12);
+VehicleInLane(AV_0,bg.12,Front);
+GreaterSpeed(AV_0,bg.12);
+

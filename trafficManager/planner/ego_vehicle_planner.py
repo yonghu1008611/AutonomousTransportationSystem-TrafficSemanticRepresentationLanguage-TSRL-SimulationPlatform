@@ -123,7 +123,6 @@ class EgoPlanner(AbstractEgoPlanner):
                 T,
             )
             # 10.20 确认车辆是否已经在目标车道上
-            print(traci.vehicle.getLaneID(ego_veh.id))
             if traci.vehicle.getLaneID(ego_veh.id) == left_lane.id:
                 # 车辆已在目标车道，发送完成变道消息并保持车道
                 ego_veh.communicator.send(f"LeftChangeLaneComplete({ego_veh.id});", performative=Performative.Inform)
@@ -150,13 +149,18 @@ class EgoPlanner(AbstractEgoPlanner):
                 ego_veh, lanes, obs_list, roadgraph, config, T,
             )
         else:
-            logging.error(
+            # 未知行为，记录日志
+            logging.info(
                 "Vehicle {} has unknown behaviour {}".format(
                     ego_veh.id, vehicle_behaviour)
             )
+            # 10.24 根据条件自检，确认下一步行为
+            if ego_decision.result[-1].action.startswith("Check"):
+                ego_veh.communicator.send(f"{ego_decision.result[-1].action};", performative=Performative.Inform)
+                ego_veh.selfcheck(ego_decision.result[-1].action,roadgraph)
             # Default to keep lane behavior if unknown
             path = traj_generator.lanekeeping_trajectory_generator(
-                ego_veh, lanes, obs_list, config, T,
+            ego_veh, lanes, obs_list, config, T,
             )
         logging.debug(
             "Vehicle {} Total planning time: {}".format(

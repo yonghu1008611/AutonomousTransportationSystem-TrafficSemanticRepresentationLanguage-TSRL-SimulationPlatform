@@ -29,7 +29,7 @@ from planner.ego_vehicle_planner import EgoPlanner
 from planner.multi_vehicle_planner import MultiVehiclePlanner
 from predictor.simple_predictor import UncontrolledPredictor
 from simModel.egoTracking.model import Model
-from TSRL_interaction.vehicle_communication import CommunicationManager,VehicleCommunicator, Performative
+from TSRL_interaction.vehicle_communication import CommunicationManager, RSUCommunicator,VehicleCommunicator, Performative
 from trafficManager.decision_maker.abstract_decision_maker import AbstractEgoDecisionMaker, EgoDecision
 from trafficManager.planner.abstract_planner import AbstractEgoPlanner, AbstractMultiPlanner
 from trafficManager.predictor.abstract_predictor import AbstractPredictor
@@ -94,12 +94,12 @@ class TrafficManager:
         # 8.18 承接使用模型的通信管理器控制参数,并控制是否开启通信功能
         self.if_traffic_communication = model.communication
         if self.if_traffic_communication:
-            self.communication_manager = CommunicationManager()
+            self.communication_manager = CommunicationManager(self.sumo_model.Scenario_Name)
 
         self.predictor = predictor if predictor is not None else UncontrolledPredictor()
-        self.ego_decision = ego_decision if ego_decision is not None else EgoDecisionMaker()
+        self.ego_decision = ego_decision if ego_decision is not None else EgoDecisionMaker(self.sumo_model.Scenario_Name)
         self.ego_planner = ego_planner if ego_planner is not None else EgoPlanner()
-        self.multi_decision = multi_decision if multi_decision is not None else MultiDecisionMaker()
+        self.multi_decision = multi_decision if multi_decision is not None else MultiDecisionMaker(self.sumo_model.Scenario_Name)
         self.multi_veh_planner = multi_veh_planner if multi_veh_planner is not None else MultiVehiclePlanner()
         
         # 9.9 注册GUI输入回调
@@ -167,6 +167,8 @@ class TrafficManager:
                                          through_timestep, self.sumo_model.sim_mode)
         # 9.12 提取道路设备信息
         facilities = self.extract_facilities(facilities, roadgraph)
+        # 9.16 处理RSU与Ego车辆的交互
+        self._handle_rsu_ego_interaction(vehicles, facilities, roadgraph, current_time_step)
         # 提取历史轨迹信息
         history_tracks = self.extract_history_tracks(current_time_step,
                                                      vehicles)
@@ -177,7 +179,6 @@ class TrafficManager:
                                   history_track=history_tracks,
                                   static_obstacles=static_obs_list
                                   )
-
         """
         # Prediction Module
         # 2. 预测模块：预测其他车辆的行为
@@ -221,13 +222,13 @@ class TrafficManager:
         # 3. 决策模块：根据感知和预测结果，生成决策
             决策模块在self.config["USE_DECISION_MAKER"]=True时起效果
             该模块的self.ego_decision.make_decision默认不作用，除非添加特定的决策算法
-            9.18 尝试添加TSRL决策模块！！！
+            9.18 尝试添加TSRL决策模块
         """
         ego_decision: EgoDecision = None
         # 如果使用Ego决策模块且当前时间步长距离上次决策的时间大于等于设置的决策间隔
         if self.config["USE_DECISION_MAKER"] and T - self.last_decision_time >= self.config["DECISION_INTERVAL"]:
             if self.config["EGO_PLANNER"]:
-                ego_decision = self.ego_decision.make_decision(
+               ego_decision = self.ego_decision.make_decision(
                     T , observation, roadgraph, prediction)
             self.mul_decisions = self.multi_decision.make_decision(
                 T, observation, roadgraph, prediction, self.config,num_readmessages=10)
@@ -240,7 +241,6 @@ class TrafficManager:
                                                    prediction,
                                                    multi_decision=self.mul_decisions,
                                                    T=T, config=self.config)
-
         # an example of ego planner
         # 生成Ego车的轨迹
         if self.config["EGO_PLANNER"]:
@@ -251,9 +251,6 @@ class TrafficManager:
                                              roadgraph, prediction, T,
                                              self.config, ego_decision)
             result_paths[ego_id] = ego_path
-
-        # 9.16 处理RSU与Ego车辆的交互
-        self._handle_rsu_ego_interaction(vehicles, facilities, roadgraph, current_time_step)
 
         # Update Last Seen 更新最后看到的车辆信息
         output_trajectories = {}
@@ -296,12 +293,10 @@ class TrafficManager:
             if vehicle.vtype == VehicleType.EGO:
                 ego_vehicle = vehicle
                 break
-        
         # 如果没有Ego车辆或没有启用通信功能，直接返回
         if not ego_vehicle or not self.if_traffic_communication:
             return
-            
-        # 检查每个RSU是否在Ego车辆的AOI范围内
+        # 遍历每个RSU，检查其是否在Ego车辆的AOI范围内
         for rsu_id, rsu in facilities.items():
             # 检查RSU是否已在EGO车辆的AOI范围内
             if rsu.isInAoI(ego_vehicle.lane_id, ego_vehicle.current_state.s, roadgraph):
@@ -309,30 +304,15 @@ class TrafficManager:
                 if current_time_step % self.config["DECISION_INTERVAL"] == 0:
                     # 检查是否已经发送过询问消息给这个RSU
                     if rsu_id not in self.queried_rsus:
+                        # 设置RSU的上下文参数
+                        if rsu.communicator and hasattr(rsu.communicator, 'set_context'):
+                            rsu.communicator.set_context(vehicles, roadgraph)
                         # Ego车辆发送询问消息给RSU
-                        query_content = f"Request vehicle information from RSU {rsu_id}"
+                        query_content = f"InformationRequest2RSU({ego_vehicle.id},{rsu_id});"
                         if ego_vehicle.communicator:
-                            ego_vehicle.communicator.send(query_content, rsu_id, performative=Performative.Query)
-                            
+                            ego_vehicle.communicator.send(query_content, rsu_id, RSUCommunicator, performative=Performative.Query)
                         # 将RSU ID添加到已查询集合中
                         self.queried_rsus.add(rsu_id)
-                        
-                        # RSU使用detect_vehicles_in_range方法获取车辆信息并回复
-                        if rsu.communicator:
-                            # 获取在RSU探测范围内的车辆信息
-                            detected_messages = rsu.detect_vehicles_in_range(vehicles, roadgraph)
-                            
-                            # 将检测到的车辆信息打包并发送给Ego车辆
-                            if detected_messages:
-                                response_content = "Vehicle information in range:\n"
-                                for message in detected_messages:
-                                    response_content += f"{message.content}\n"
-                                
-                                # RSU发送回复消息给Ego车辆
-                                rsu.communicator.send(response_content, ego_vehicle.id, performative=Performative.Accept)
-                            else:
-                                # 如果没有检测到车辆，发送空结果消息
-                                rsu.communicator.send("No vehicles detected in range", ego_vehicle.id, performative=Performative.Accept)
             else:
                 # 如果Ego车辆不在RSU的AOI范围内，从已查询集合中移除该RSU
                 if rsu_id in self.queried_rsus:
@@ -543,5 +523,4 @@ class TrafficManager:
             if self.if_traffic_communication:
                 ego_car.init_communication(self.communication_manager,True)
                 ego_car.communicator.send(f"SelfVehicle({ego_car.id});")
-
         return ego_car

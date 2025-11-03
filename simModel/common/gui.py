@@ -279,22 +279,21 @@ class GUI:
                         'a_series_tag_future', 'plot_theme_a_future'
                     ) 
             # 绘制评价指标窗口
-            # # 6.30 尝试对其进行更改
-            # with dpg.window(
-            #     tag='sEvaluation', # 窗口的标识
-            #     label='Evaluation', # 窗口标题的名字
-            #     no_close=True,
-            # ):
-            #     dpg.add_draw_node(tag="radarBackground", parent="sEvaluation")
-            #     dpg.add_draw_node(tag="radarPlot", parent="sEvaluation")
-            
-            # 将雷达图改成TSRL文本展示窗口
             with dpg.window(
-                tag='TSRLs', # 窗口的标识
-                label='TSRL-Presentation', # 窗口标题的名字
+                tag='sEvaluation', # 窗口的标识
+                label='Evaluation', # 窗口标题的名字
                 no_close=True,
             ):
-                dpg.add_draw_node(tag="TSRL-Text", parent="TSRLs")
+                dpg.add_draw_node(tag="radarBackground", parent="sEvaluation")
+                dpg.add_draw_node(tag="radarPlot", parent="sEvaluation")
+            
+            # 将雷达图改成TSRL文本展示窗口
+            # with dpg.window(
+            #     tag='TSRLs', # 窗口的标识
+            #     label='TSRL-Presentation', # 窗口标题的名字
+            #     no_close=True,
+            # ):
+            #     dpg.add_draw_node(tag="TSRL-Text", parent="TSRLs")
             
             # 绘制城市级别地图窗口
             with dpg.window(
@@ -368,11 +367,14 @@ class GUI:
             dpg.set_item_width('vState', 415)
             dpg.set_item_height('vState', 345)
             dpg.set_item_pos('vState', (1230, 10))
-
             # 调整TSRL窗口尺寸和位置
-            dpg.set_item_width('TSRLs', 415)
-            dpg.set_item_height('TSRLs', 345)
-            dpg.set_item_pos('TSRLs', (1230, 365))
+            # dpg.set_item_width('TSRLs', 415)
+            # dpg.set_item_height('TSRLs', 345)
+            # dpg.set_item_pos('TSRLs', (1230, 365))
+            # 调整评价指标窗口尺寸和位置
+            dpg.set_item_width('sEvaluation', 415)
+            dpg.set_item_height('sEvaluation', 345)
+            dpg.set_item_pos('sEvaluation', (1230, 365))
 
             # 调整地图窗口尺寸和位置
             dpg.set_item_width('macroMap', 500)

@@ -3,11 +3,15 @@
 词法分析器
 ver:1.0
 '''
+import sys
+import os
+# 添加当前目录到Python路径
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
 import Tokentype
 from Tokentype import *
 from typing import List, Optional
-from errorHanding import *
-import sys
+import errorHanding
 
 class Scanner:
     def __init__(self, source: str):
@@ -100,13 +104,13 @@ class Scanner:
                 self.add_token(TokenType.IMPLICATE)
             else:
                 # 处理意外字符
-                scanError(self.line, "Unexpected character.")
+                errorHanding.scanError(self.line, "Unexpected character.")
         elif c == '?':
             if self.match('-'):
                 self.add_token(TokenType.ASK)
             else:
                 # 处理意外字符
-                scanError(self.line, "Unexpected character.")
+                errorHanding.scanError(self.line, "Unexpected character.")
         #数字
         elif self.is_digit(c):
             self.number()
@@ -117,7 +121,7 @@ class Scanner:
 
         else:
         # 处理意外字符
-            scanError(self.line, "Unexpected character.")
+            errorHanding.scanError(self.line, "Unexpected character.")
 
     #处理字符串
     def string(self):
@@ -126,7 +130,7 @@ class Scanner:
                 self.line+=1
             self.advance()
         if self.is_at_end():
-            scanError(self.line, "Unterminated string.")
+            errorHanding.scanError(self.line, "Unterminated string.")
             return
         #关闭
         self.advance()
@@ -168,7 +172,12 @@ class Scanner:
                c == '_'
 
     def is_alphanumeric(self, c: str) -> bool:
-        return self.is_alpha(c) or self.is_digit(c)
+        return self.is_alpha(c) or self.is_digit(c) or c == '.'
+
+    def is_alpha(self, c: str) -> bool:
+        return (c >= 'a' and c <= 'z') or \
+               (c >= 'A' and c <= 'Z') or \
+               c == '_' or c == '.'
 
     #词分析函数
         # 前瞻一个字符

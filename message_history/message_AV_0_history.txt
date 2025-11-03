@@ -1,5 +1,0 @@
-SelfVehicle(AV_0);
-Request vehicle information from RSU RSU_1
-Send by RSU RSU_1:Vehicle information in range:
-Detected vehicle AV_0 on lane main_0 at position 392.20m, speed: 19.42m/s, distance to detector: 7.80m
-

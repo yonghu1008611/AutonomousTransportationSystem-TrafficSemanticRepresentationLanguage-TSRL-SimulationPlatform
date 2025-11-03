@@ -1,0 +1,16 @@
+SelfVehicle(AV_0);
+InformationRequest2RSU(AV_0,RSU_1);
+getVehicleID(bg.13);
+VehicleInLane(AV_0,bg.13,Front);
+GreaterSpeed(AV_0,bg.13);
+getVehicleID(bg.12);
+VehicleInLane(AV_0,bg.12,Front);
+GreaterSpeed(AV_0,bg.12);
+
+CheckChangeLane(x):-VehicleInLane(x,y,Front),GreaterSpeed(x,y);
+LeftChangeLane(x):-CheckChangeLane(x),LeftChangeLaneSafe(x);
+KeepLane(x):-VehicleInLane(x,y,Front),GreaterSpeed(y,x);
+RightChangeLane(x):-CheckChangeLane(x),RightChangeLaneSafe(x);
+Accelerate(x):-VehicleInLane(x,None,Front);
+
+ASK CheckChangeLane(x);

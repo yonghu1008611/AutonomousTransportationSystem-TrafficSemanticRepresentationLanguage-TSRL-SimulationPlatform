@@ -2,7 +2,13 @@ SelfVehicle(1);
 Redlight(0);
 Redlight(1);
 EmergencyStation(0);
+CheckChangeLane(1);
+LeftChangeLaneSafe(1);
+LeftChangeLane(1);
+LeftChangeLane(1);
+LeftChangeLane(1);
+LeftChangeLane(1);
 
-ChangeLane(y):-SelfVehicle(y),EmergencyStation(x);
+LeftChangeLane(x):-CheckChangeLane(x),LeftChangeLaneSafe(x);
 
-ASK ChangeLane(y)
+ASK LeftChangeLane(x)

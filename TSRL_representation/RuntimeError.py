@@ -1,4 +1,9 @@
 
+import sys
+import os
+# 添加当前目录到Python路径
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
 import Tokentype
 class CustomRuntimeError(RuntimeError) :
     def __init__(self, token, message):

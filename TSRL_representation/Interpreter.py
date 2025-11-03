@@ -8,6 +8,10 @@ Author:oufan
 """
 import json
 from typing import List
+import sys
+import os
+# 添加当前目录到Python路径
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from networkx import selfloop_edges
 
@@ -22,7 +26,6 @@ import errorHanding
 # import time
 # from Return import Return
 
-import sys
 from typing import Any
 
 
@@ -33,8 +36,14 @@ class Interpreter(Expr.ExprVisitor, Stmt.StmtVisitor):
         self.subset = {} # 储存置换表
         self.output_file = sys.stdout  # 添加这行初始化输出文件
 
-    def set_output_file(self, file):  # 添加此方法
-        self.output_file = file
+    def set_output_file(self, file_path):  # 添加此方法
+        """设置输出文件路径"""
+        if isinstance(file_path, str):
+            # 如果是字符串路径，则打开文件
+            self.output_file = open(file_path, 'w', encoding='utf-8')
+        else:
+            # 如果已经是文件对象，则直接使用
+            self.output_file = file_path
 
     def interpret(self,  statements:List[Stmt.Stmt]):
         try:
@@ -69,7 +78,7 @@ class Interpreter(Expr.ExprVisitor, Stmt.StmtVisitor):
 
     def visitAskStmt(self, stmt):
         """
-        执行询问语句，目的是推断ASK后的语句是否为真，并返回可能的置换,并写入output.txt文件中
+        执行询问语句，目的是推断ASK后的语句是否为真，并返回可能的置换,并写入指定的输出文件中
         """
         Dict = self.kb.ask(self.__evaluate__(stmt.expression))
         d={}
@@ -79,12 +88,22 @@ class Interpreter(Expr.ExprVisitor, Stmt.StmtVisitor):
                     pass
                 else:
                     d[str(key)]=str(value)
-            with open('output.txt', 'w', encoding='utf-8') as file:
-                file.write(json.dumps(d,ensure_ascii=False))
+            # 使用self.output_file而不是硬编码的'output.txt'
+            # 检查output_file是否可寻址，避免对sys.stdout调用seek方法
+            if hasattr(self.output_file, 'seekable') and self.output_file.seekable():
+                self.output_file.seek(0)
+                self.output_file.truncate()
+            self.output_file.write(json.dumps(d, ensure_ascii=False))
+            self.output_file.flush()
             print(d)
         else:
-            with open('output.txt', 'w', encoding='utf-8') as file:
-                file.write('False')
+            # 使用self.output_file而不是硬编码的'output.txt'
+            # 检查output_file是否可寻址，避免对sys.stdout调用seek方法
+            if hasattr(self.output_file, 'seekable') and self.output_file.seekable():
+                self.output_file.seek(0)
+                self.output_file.truncate()
+            self.output_file.write('False')
+            self.output_file.flush()
             print(Dict)
 
 

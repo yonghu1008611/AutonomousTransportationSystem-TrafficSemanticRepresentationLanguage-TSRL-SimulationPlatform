@@ -60,6 +60,7 @@ class Model:
                  carla_cosim: bool = False,
                  max_steps: int = 1000,# 4.23 添加最大模拟步长
                  communication: bool = False, # 25.8.16 新增参数，全局通信管理器
+                 Scenario_Name: str = None, # 25.10.20 场景名称
                  ) -> None:
 
         print('[green bold]Model initialized at {}.[/green bold]'.format(
@@ -81,6 +82,7 @@ class Model:
         # need carla cosimulation
         self.carla_cosim = carla_cosim # 是否需要Carla协同仿真
         self.communication=communication # 25.8.16 新增参数，是否添加全局通信管理器
+        self.Scenario_Name = Scenario_Name # 25.10.20 场景名称
         self.ego = egoCar(egoID)
 
         if dataBase:
@@ -520,8 +522,6 @@ class Model:
                           color=(249, 202, 36),
                           size=20,
                           parent=infoNode)
-
-        """
         # 评估窗口雷达图（sEvaluation窗口）
         points = self.evaluation.output_result() # 获取评估指标（偏移量、舒适度等）
         self.putEvaluationInfo(self.evaluation.result) # 将评估信息插入数据库
@@ -535,41 +535,19 @@ class Model:
                              fill=(75, 207, 250, 100), # 雷达图填充颜色
                              thickness=5, # 雷达图轮廓宽度
                              parent=radarNode) # 在radarNode上进行绘画
-        """
-        # 8.27 新增TSIL展示窗口，以及TSIL文本读取和展示功能
-        if dpg.does_item_exist('TSILs'):
-            TSILNode = dpg.add_draw_node(parent='TSILs') 
-            # 读取display_text.txt文件内容
-            display_text_path = os.path.join(os.path.dirname(__file__), '..', '..', 'message_history/display_text.txt')
-            try:
-                with open(display_text_path, 'r', encoding='utf-8') as f:
-                    display_content = f.read().strip()
-                    if not display_content:
-                        display_content = 'No display text available'
-            except Exception as e:
-                display_content = f'Error reading display_text.txt: {str(e)}'
-            # 将文本按行分割并显示
-            lines = display_content.split('\n')
-            y_offset = 5
-            for i, line in enumerate(lines[:10]):  # 限制显示前10行
-                dpg.draw_text((5, y_offset + i * 25),
-                    line,
-                    color=(75, 207, 250),
-                    size=20,
-                    parent=TSILNode) # 绘制模拟信息
-        # dpg.draw_text((5, 5),
-        #     'test TSIL infomation',
-        #         color=(75, 207, 250),
-        #         size=20,
-        #         parent=TSILNode) # 绘制模拟信息
-
     # 评估信息坐标转换，为了将评估数据的极坐标转换为GUI界面中窗口的屏幕坐标系统，以在
     # 屏幕上进行图标绘制
- 
     def _evaluation_transform_coordinate(self, points: List[float],
                                          scale: float) -> List[List[float]]:
-        dpgHeight = dpg.get_item_height('sEvaluation') - 30
-        dpgWidth = dpg.get_item_width('sEvaluation') - 20
+        # 检查sEvaluation窗口是否存在
+        if dpg.does_item_exist('sEvaluation'):
+            dpgHeight = dpg.get_item_height('sEvaluation') - 30
+            dpgWidth = dpg.get_item_width('sEvaluation') - 20
+        else:
+            # 如果sEvaluation窗口不存在，使用默认尺寸
+            dpgHeight = 300 - 30
+            dpgWidth = 300 - 20
+            
         centerx = dpgWidth / 2
         centery = dpgHeight / 2
 
@@ -630,6 +608,34 @@ class Model:
         laneID = traci.vehicle.getLaneID(vid)
         veh.routeIdxAppend(laneID)
         veh.laneAppend(self.nb)
+
+    def clear_message_files(self, traffic_manager, if_clear_message_file=False):
+        """清理消息文件或清空消息内容
+        
+        Args:
+            traffic_manager: TrafficManager实例
+            if_clear_message_file (bool): 
+                True表示删除消息文件，
+                False表示清空消息文件内容
+        """
+        try:
+            # 确保目录存在
+            message_history_path = os.path.join("message_history", self.Scenario_Name)
+            os.makedirs(message_history_path, exist_ok=True)
+            # 8.27 新增：清理消息文件or清理消息内容：
+            if if_clear_message_file == True:
+                # 8.19 新增：删除所有消息历史文件
+                traffic_manager.communication_manager.cleanup_message_files()
+                # 8.27 新增：删除display_text文件
+                traffic_manager.communication_manager.cleanup_display_text(loc=message_history_path)
+            else:
+                # 8.19 新增：清空所有消息历史文件内容
+                traffic_manager.communication_manager.clear_message_files_content()
+                # 8.27 新增：清空display_text文件里的内容
+                traffic_manager.communication_manager.clear_display_text_content(loc=message_history_path)
+        except Exception as e:
+            print(f"Error in clear_message_files: {str(e)}")
+            raise
 
     # 控制车辆下一步长的移动
     def vehMoveStep(self, veh: Vehicle):
@@ -703,10 +709,21 @@ class Model:
 
     # 在GUI的sEvaluation窗口绘制雷达背景框架图
     def drawRadarBG(self):
+        # 检查radarBackground是否存在
+        if not dpg.does_item_exist('radarBackground'):
+            return
+            
         bgNode = dpg.add_draw_node(parent='radarBackground')
         # eliminate the bias
-        dpgHeight = dpg.get_item_height('sEvaluation') - 30
-        dpgWidth = dpg.get_item_width('sEvaluation') - 20
+        # 检查sEvaluation窗口是否存在
+        if dpg.does_item_exist('sEvaluation'):
+            dpgHeight = dpg.get_item_height('sEvaluation') - 30
+            dpgWidth = dpg.get_item_width('sEvaluation') - 20
+        else:
+            # 如果sEvaluation窗口不存在，使用默认尺寸
+            dpgHeight = 300 - 30
+            dpgWidth = 300 - 20
+            
         centerx = dpgWidth / 2
         centery = dpgHeight / 2
         for i in range(4):
@@ -780,7 +797,7 @@ class Model:
         if self.ego.id in traci.vehicle.getIDList(): # 如果自车在场景中
             if not self.tpStart: # 如果模拟未开始
                 self.gui.start() # 启动dearpygui
-                # self.drawRadarBG() # 绘制雷达背景   
+                self.drawRadarBG() # 绘制雷达背景   
                 self.drawMapBG() # 绘制地图背景
                 self.tpStart = 1 # 设置模拟开始标志
             self.render() # 渲染仿真界面场景

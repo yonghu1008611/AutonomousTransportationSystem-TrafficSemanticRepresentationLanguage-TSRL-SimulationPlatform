@@ -8,7 +8,7 @@ Classes:
 """
 
 from enum import Enum
-from typing import Any, Dict, Set, List
+from typing import Any, Dict, FrozenSet, Set, List
 from utils.trajectory import State
 import logger
 # 添加RSUCommunicator的导入
@@ -155,76 +155,86 @@ class control_RSU:
     def init_communication(self, communication_manager):
         """初始化RSU通信器"""
         if RSUCommunicator is not None:
-            self.communicator = RSUCommunicator(self.id, communication_manager)
+            self.communicator = RSUCommunicator(self.id, self, communication_manager)
             self.communicator.rsu = self
         else:
             logging.warning("RSUCommunicator not available, communication not initialized")
-    #9.16 检测在RSU探测器范围内的车辆，并将信息打包为Message类
-    def detect_vehicles_in_range(self, vehicles: Dict[str, control_Vehicle], roadgraph) -> List[Message]:
+    #9.16 检测在RSU探测器范围内的[车辆]，并将信息打包为Message类
+    def detect_vehicles_in_range(self, vehicles: Dict[str, control_Vehicle], roadgraph, receive_message: Message) -> List[str]:
         """
         检测在RSU探测器范围内的车辆，并将信息打包为Message类
-        
         Args:
             vehicles: 字典，包含所有车辆对象，键为车辆ID，值为control_Vehicle对象
-            roadgraph: 路网信息对象
-            
+            roadgraph: 路网信息对象，用于获取车道信息
+            receive_message: 接收到的消息对象，用于排除发送者车辆
         Returns:
-            List[Message]: 包含检测到的车辆信息的Message对象列表
+            List[str]: 包含检测到的车辆信息的字符串列表
         """
         detected_messages = []
-        
+        # 获取发送者车辆ID
+        sender_id = receive_message.sender_id
+        # 获取发送者车辆位置
+        # 获取发送者车辆所处的车道ID
+        sender_lane_id = vehicles[sender_id].lane_id
+        sender_pos = vehicles[sender_id].current_state.s
+        sender_vel = vehicles[sender_id].current_state.vel
         # 遍历所有检测器
         for detector in self.detectors:
             # 获取检测器所在的车道
             detector_lane_id = detector.lane
             if not detector_lane_id:
                 continue
-                
             # 获取检测器位置和检测范围
             detector_pos = detector.pos
             detect_length = detector.detectlenth
-            
-            # 遍历所有车辆，查找在该车道上的车辆
+            # 遍历所有车辆，查找在该检测器所处车道上的车辆
             for vehicle_id, vehicle in vehicles.items():
-                # 检查车辆是否在相同的车道上
+                # 排除发送者车辆
+                if vehicle_id == sender_id:
+                    continue
+                # 检查车辆是否在检测器所在的车道上
                 if vehicle.lane_id == detector_lane_id:
                     # 获取车辆在车道上的位置
                     vehicle_pos = vehicle.current_state.s
-                    
                     # 计算车辆与检测器之间的距离
-                    distance = abs(vehicle_pos - detector_pos)
-                    
+                    distance2detector = abs(vehicle_pos - detector_pos)
                     # 如果车辆在检测范围内
-                    if distance <= detect_length:
-                        # 创建车辆信息字典
-                        vehicle_info = {
-                            "id": vehicle.id,
-                            "position": {
-                                "x": vehicle.current_state.x,
-                                "y": vehicle.current_state.y,
-                                "lane_pos": vehicle.current_state.s
-                            },
-                            "speed": vehicle.current_state.vel,
-                            "acceleration": vehicle.current_state.acc,
-                            "behavior": vehicle.behaviour.name if hasattr(vehicle.behaviour, 'name') else str(vehicle.behaviour),
-                            "distance_to_detector": distance
-                        }
-                        
-                        # 将车辆信息打包为Message对象
-                        message_content = f"Detected vehicle {vehicle.id} on lane {detector_lane_id} " \
-                                        f"at position {vehicle_pos:.2f}m, " \
-                                        f"speed: {vehicle.current_state.vel:.2f}m/s, " \
-                                        f"distance to detector: {distance:.2f}m"
-                        
-                        message = Message(
-                            sender_id=self.id,
-                            receiver_id="broadcast",  # 可以根据需要修改接收者
-                            content=message_content,
-                            performative=Performative.Inform
-                        )
-                        
-                        detected_messages.append(message)
-        
+                    if distance2detector <= detect_length:
+                        # 创建承载交通信息的互操作语言
+                        vehicle_info = f"getVehicleID({vehicle.id});\n"
+                        # 1. 相对位置关系
+                        if vehicle.lane_id == sender_lane_id:
+                            if vehicle_pos >= sender_pos:
+                                vehicle_info += f"VehicleInLane({sender_id},{vehicle_id},Front);\n"
+                            else:
+                                vehicle_info += f"VehicleInLane({sender_id},{vehicle_id},Rear);\n"
+                        else:
+                            # 获取发送者车道和当前车辆车道的对象
+                            sender_lane = roadgraph.get_lane_by_id(sender_lane_id)
+                            vehicle_lane = roadgraph.get_lane_by_id(vehicle.lane_id)
+                            
+                            # 判断车辆是否在发送者的左车道
+                            if (sender_lane and hasattr(sender_lane, 'left_lane') and 
+                                sender_lane.left_lane() == vehicle.lane_id):
+                                if vehicle_pos >= sender_pos:
+                                    vehicle_info += f"VehicleLeftLane({sender_id},{vehicle_id},Front);\n"
+                                else:
+                                    vehicle_info += f"VehicleLeftLane({sender_id},{vehicle_id},Rear);\n"
+                            # 判断车辆是否在发送者的右车道
+                            elif (sender_lane and hasattr(sender_lane, 'right_lane') and 
+                                  sender_lane.right_lane() == vehicle.lane_id):
+                                if vehicle_pos >= sender_pos:
+                                    vehicle_info += f"VehicleRightLane({sender_id},{vehicle_id},Front);\n"
+                                else:
+                                    vehicle_info += f"VehicleRightLane({sender_id},{vehicle_id},Rear);\n"
+                        # 2. 相对速度关系
+                        if vehicle.current_state.vel > sender_vel:
+                            vehicle_info += f"GreaterSpeed({vehicle_id},{sender_id});\n"
+                        elif vehicle.current_state.vel < sender_vel:
+                            vehicle_info += f"GreaterSpeed({sender_id},{vehicle_id});\n"
+                        else:
+                            vehicle_info += f"EqualSpeed({sender_id},{vehicle_id});\n"
+                        detected_messages.append(vehicle_info)
         return detected_messages
 
 def create_rsu(rsu_info: Dict, rsu_type: RSUType) -> control_RSU:

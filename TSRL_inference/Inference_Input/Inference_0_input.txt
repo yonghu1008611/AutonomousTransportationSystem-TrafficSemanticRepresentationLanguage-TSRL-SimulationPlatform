@@ -1,0 +1,13 @@
+Redlight(0);
+Redlight(1);
+EmergencyStation(0);
+CheckChangeLane(1);
+LeftChangeLaneSafe(1);
+LeftChangeLane(1);
+LeftChangeLane(1);
+LeftChangeLane(1);
+LeftChangeLane(1);
+
+LeftChangeLane(x):-CheckChangeLane(x),LeftChangeLaneSafe(x);
+
+ASK LeftChangeLane(x)

@@ -1,1 +1,8 @@
-ChangeLane(y):-SelfVehicle(y),EmergencyStation(x); 
+//1.条件检查一律以Check开始
+//
+
+CheckChangeLane(y):-SelfVehicle(y),EmergencyStation(x); 
+CheckChangeLane(x):-VehicleInLane(x,y,Front),GreaterSpeed(x,y);
+KeepLane(x):-VehicleInLane(x,y,Front),GreaterSpeed(y,x);
+LeftChangeLane(x):-CheckChangeLane(x),LeftChangeLaneSafe(x);
+RightChangeLane(x):-CheckChangeLane(x),RightChangeLaneSafe(x);

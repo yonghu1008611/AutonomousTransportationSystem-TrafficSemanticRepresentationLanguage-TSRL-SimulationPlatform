@@ -1,8 +1,12 @@
+import sys
+import os
+# 添加当前目录到Python路径
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
 import errorHanding
 from Tokentype import *
 import Expr 
 import Stmt
-import errorHanding
 
 
 class ParseError(Exception):
@@ -19,7 +23,9 @@ class Parser:
     def parse(self)->List[Stmt.Stmt]:
         statements: List[Stmt.Stmt] = []
         while not self.is_at_end():
-            statements.append(self.__declaration__())
+            decl = self.__declaration__()
+            if decl is not None:
+                statements.append(decl)
 
         return statements
         # try:
@@ -225,7 +231,7 @@ class Parser:
 
     def synchronize(self):
         self.advance()
-        while not self.is_at_end :
+        while not self.is_at_end():
             if self.previous().type == TokenType.SEMICOLON: #此处认为结尾符为“;”
                 return
             peeked_token_type = self.peek().type #当遇到以下保留字时，可认为下一条语句开始了

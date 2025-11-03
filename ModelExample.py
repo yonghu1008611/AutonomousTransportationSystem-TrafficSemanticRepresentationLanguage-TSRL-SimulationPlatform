@@ -79,16 +79,7 @@ def run_model(
     model.start()
     planner = TrafficManager(model)
     # 8.27 新增：清理消息文件or清理消息内容：
-    if if_clear_message_file == True:
-        # 8.19 新增：删除所有消息历史文件
-        planner.communication_manager.cleanup_message_files()
-        # 8.27 新增：删除display_text文件
-        planner.communication_manager.cleanup_display_text(loc="message_history")
-    else:
-        # 8.19 新增：清空所有消息历史文件内容
-        planner.communication_manager.clear_message_files_content()
-        # 8.27 新增：清空display_text文件里的内容
-        planner.communication_manager.clear_display_text_content(loc="message_history")
+    model.clear_message_files(planner, if_clear_message_file)
     
     while not model.tpEnd:
         model.moveStep()
