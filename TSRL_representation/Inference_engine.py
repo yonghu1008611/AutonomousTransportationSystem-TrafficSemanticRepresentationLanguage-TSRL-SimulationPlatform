@@ -358,10 +358,6 @@ class FolKB(KB):
 
 #前向链接
 def fol_fc_ask(kb, alpha):
-    """
-    [Figure 9.3]
-    A simple forward-chaining algorithm.
-    """
     # TODO: improve efficiency
     kb_consts = list({c for clause in kb.clauses for c in constant_symbols(clause)}) # 返回不重复的常量列表
 
@@ -401,11 +397,6 @@ def fol_fc_ask(kb, alpha):
 
 #反向链接
 def fol_bc_ask(kb, query):
-    """
-    [Figure 9.6]
-    A simple backward-chaining algorithm for first-order logic.
-    KB should be an instance of FolKB, and query an atomic sentence.
-    """
     return fol_bc_or(kb, query, {})
 
 #或搜索
@@ -428,17 +419,5 @@ def fol_bc_and(kb, goals, theta):
                 yield theta2
 
 
-# kb = FolKB([Expr('Male',Expr('Di')),Expr('Male',Expr('Jianbo')),
-#              Expr('Female',Expr('Xin')),Expr('Female',Expr('Yuan')),Expr('Female',Expr('YuQing')),
-#              Expr('Father',Expr('Jianbo'),Expr('Di')),Expr('Father',Expr('Di'),Expr('YuQing')),
-#              Expr('Mother',Expr('Xin'),Expr('Di')),Expr('Mother',Expr('Yuan'),Expr('YuQing'))])
-#
-# kb.tell(Expr('==>',Expr('&',Expr('Father',Expr('x'),Expr('z')),Expr('Father',Expr('z'),Expr('y'))),
-#              Expr('Grandfather',Expr('x'),Expr('z'))))
-# kb.tell(Expr('==>',Expr('&',Expr('Mather',Expr('x'),Expr('z')),Expr('Father',Expr('z'),Expr('y'))),
-#              Expr('Grandmother',Expr('x'),Expr('z'))))
-# kb.tell(Expr('==>',Expr('&',Expr('Father',Expr('x'),Expr('z')),Expr('Female',Expr('z'))),
-#              Expr('Daughter',Expr('z'),Expr('x'))))
-#
-# print(kb.ask(Expr('Daughter',Expr('YuQing'),Expr('x')))[Expr('x')])
+
 
